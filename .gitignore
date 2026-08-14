@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+release/
+screenshots/generated/
+screenshots/ui-check/
+*.log
+*.err.log
+*.out.log
+.env
+.env.*
+!.env.example
+.DS_Store

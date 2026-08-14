@@ -1,0 +1,2407 @@
+{
+  "baseUrl": "http://127.0.0.1:4173/ui-prototype/",
+  "generatedAt": "2026-08-10T03:57:48.289Z",
+  "errors": [],
+  "narrowChecks": [
+    {
+      "hash": "#/dashboard",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    },
+    {
+      "hash": "#/devices",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    },
+    {
+      "hash": "#/warehouse?tab=outbound",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    },
+    {
+      "hash": "#/repairs",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    },
+    {
+      "hash": "#/settings?tab=security",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    },
+    {
+      "hash": "#/login",
+      "viewport": 1024,
+      "scrollWidth": 1024,
+      "hasMain": true,
+      "visibleTitle": true
+    }
+  ],
+  "screens": [
+    {
+      "id": "auth-login",
+      "hash": "#/login",
+      "label": "登录",
+      "file": "001-auth-login.png",
+      "size": 1012892,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 321
+      }
+    },
+    {
+      "id": "auth-register",
+      "hash": "#/register",
+      "label": "经销商注册申请",
+      "file": "002-auth-register.png",
+      "size": 1022889,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 399
+      }
+    },
+    {
+      "id": "auth-forgot",
+      "hash": "#/forgot",
+      "label": "找回密码",
+      "file": "003-auth-forgot.png",
+      "size": 1014901,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 326
+      }
+    },
+    {
+      "id": "auth-first-password",
+      "hash": "#/first-password",
+      "label": "首次登录改密",
+      "file": "004-auth-first-password.png",
+      "size": 1016231,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 321
+      }
+    },
+    {
+      "id": "tasks-all",
+      "hash": "#/tasks?tab=all",
+      "label": "我的待办 / 全部待办",
+      "file": "005-tasks-all.png",
+      "size": 123541,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 926
+      }
+    },
+    {
+      "id": "tasks-repair",
+      "hash": "#/tasks?tab=repair",
+      "label": "我的待办 / 报修",
+      "file": "006-tasks-repair.png",
+      "size": 123488,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 926
+      }
+    },
+    {
+      "id": "tasks-approval",
+      "hash": "#/tasks?tab=approval",
+      "label": "我的待办 / 审批",
+      "file": "007-tasks-approval.png",
+      "size": 123452,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 926
+      }
+    },
+    {
+      "id": "tasks-complaint",
+      "hash": "#/tasks?tab=complaint",
+      "label": "我的待办 / 投诉",
+      "file": "008-tasks-complaint.png",
+      "size": 123504,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 926
+      }
+    },
+    {
+      "id": "tasks-inventory",
+      "hash": "#/tasks?tab=inventory",
+      "label": "我的待办 / 库存",
+      "file": "009-tasks-inventory.png",
+      "size": 123429,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 926
+      }
+    },
+    {
+      "id": "users-all",
+      "hash": "#/users?tab=all",
+      "label": "用户管理 / 全部用户",
+      "file": "010-users-all.png",
+      "size": 116762,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1002
+      }
+    },
+    {
+      "id": "users-active",
+      "hash": "#/users?tab=active",
+      "label": "用户管理 / 正常",
+      "file": "011-users-active.png",
+      "size": 116742,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1002
+      }
+    },
+    {
+      "id": "users-disabled",
+      "hash": "#/users?tab=disabled",
+      "label": "用户管理 / 已禁用",
+      "file": "012-users-disabled.png",
+      "size": 116796,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1002
+      }
+    },
+    {
+      "id": "devices-all",
+      "hash": "#/devices?tab=all",
+      "label": "设备管理 / 全部设备",
+      "file": "013-devices-all.png",
+      "size": 126811,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1055
+      }
+    },
+    {
+      "id": "devices-online",
+      "hash": "#/devices?tab=online",
+      "label": "设备管理 / 在线",
+      "file": "014-devices-online.png",
+      "size": 126740,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1055
+      }
+    },
+    {
+      "id": "devices-inactive",
+      "hash": "#/devices?tab=inactive",
+      "label": "设备管理 / 未激活",
+      "file": "015-devices-inactive.png",
+      "size": 126800,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1055
+      }
+    },
+    {
+      "id": "devices-disabled",
+      "hash": "#/devices?tab=disabled",
+      "label": "设备管理 / 远程禁用",
+      "file": "016-devices-disabled.png",
+      "size": 126746,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1055
+      }
+    },
+    {
+      "id": "ota-versions",
+      "hash": "#/ota?tab=versions",
+      "label": "OTA 管理 / 固件版本",
+      "file": "017-ota-versions.png",
+      "size": 112769,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 906
+      }
+    },
+    {
+      "id": "ota-tasks",
+      "hash": "#/ota?tab=tasks",
+      "label": "OTA 管理 / 发布任务",
+      "file": "018-ota-tasks.png",
+      "size": 112785,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 906
+      }
+    },
+    {
+      "id": "ota-failures",
+      "hash": "#/ota?tab=failures",
+      "label": "OTA 管理 / 失败设备",
+      "file": "019-ota-failures.png",
+      "size": 112796,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 906
+      }
+    },
+    {
+      "id": "dealers-all",
+      "hash": "#/dealers?tab=all",
+      "label": "经销商管理 / 全部经销商",
+      "file": "020-dealers-all.png",
+      "size": 118200,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 907
+      }
+    },
+    {
+      "id": "dealers-tier1",
+      "hash": "#/dealers?tab=tier1",
+      "label": "经销商管理 / 一级经销商",
+      "file": "021-dealers-tier1.png",
+      "size": 117558,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 907
+      }
+    },
+    {
+      "id": "dealers-tier2",
+      "hash": "#/dealers?tab=tier2",
+      "label": "经销商管理 / 二级经销商",
+      "file": "022-dealers-tier2.png",
+      "size": 118239,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 907
+      }
+    },
+    {
+      "id": "dealers-disabled",
+      "hash": "#/dealers?tab=disabled",
+      "label": "经销商管理 / 已禁用",
+      "file": "023-dealers-disabled.png",
+      "size": 117901,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 907
+      }
+    },
+    {
+      "id": "projects-all",
+      "hash": "#/projects?tab=all",
+      "label": "项目管理 / 全部项目",
+      "file": "024-projects-all.png",
+      "size": 110206,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 930
+      }
+    },
+    {
+      "id": "projects-warranty",
+      "hash": "#/projects?tab=warranty",
+      "label": "项目管理 / 质保临期",
+      "file": "025-projects-warranty.png",
+      "size": 110169,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 930
+      }
+    },
+    {
+      "id": "projects-expired",
+      "hash": "#/projects?tab=expired",
+      "label": "项目管理 / 已过期",
+      "file": "026-projects-expired.png",
+      "size": 110213,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 930
+      }
+    },
+    {
+      "id": "repairs-all",
+      "hash": "#/repairs?tab=all",
+      "label": "故障报修 / 全部报修",
+      "file": "027-repairs-all.png",
+      "size": 119367,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 923
+      }
+    },
+    {
+      "id": "repairs-pending",
+      "hash": "#/repairs?tab=pending",
+      "label": "故障报修 / 待处理",
+      "file": "028-repairs-pending.png",
+      "size": 119181,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 923
+      }
+    },
+    {
+      "id": "repairs-processing",
+      "hash": "#/repairs?tab=processing",
+      "label": "故障报修 / 处理中",
+      "file": "029-repairs-processing.png",
+      "size": 119150,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 923
+      }
+    },
+    {
+      "id": "repairs-completed",
+      "hash": "#/repairs?tab=completed",
+      "label": "故障报修 / 已完成",
+      "file": "030-repairs-completed.png",
+      "size": 119291,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 923
+      }
+    },
+    {
+      "id": "repairs-overdue",
+      "hash": "#/repairs?tab=overdue",
+      "label": "故障报修 / 已超时",
+      "file": "031-repairs-overdue.png",
+      "size": 119299,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 923
+      }
+    },
+    {
+      "id": "messages-all",
+      "hash": "#/messages?tab=all",
+      "label": "客服留言 / 全部留言",
+      "file": "032-messages-all.png",
+      "size": 105277,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 835
+      }
+    },
+    {
+      "id": "messages-unreplied",
+      "hash": "#/messages?tab=unreplied",
+      "label": "客服留言 / 未回复",
+      "file": "033-messages-unreplied.png",
+      "size": 105036,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 835
+      }
+    },
+    {
+      "id": "messages-forwarded",
+      "hash": "#/messages?tab=forwarded",
+      "label": "客服留言 / 已转发",
+      "file": "034-messages-forwarded.png",
+      "size": 105185,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 835
+      }
+    },
+    {
+      "id": "messages-replied",
+      "hash": "#/messages?tab=replied",
+      "label": "客服留言 / 已回复",
+      "file": "035-messages-replied.png",
+      "size": 105117,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 835
+      }
+    },
+    {
+      "id": "complaints-all",
+      "hash": "#/complaints?tab=all",
+      "label": "投诉管理 / 全部投诉",
+      "file": "036-complaints-all.png",
+      "size": 100923,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 724
+      }
+    },
+    {
+      "id": "complaints-pending",
+      "hash": "#/complaints?tab=pending",
+      "label": "投诉管理 / 待处理",
+      "file": "037-complaints-pending.png",
+      "size": 101147,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 724
+      }
+    },
+    {
+      "id": "complaints-processing",
+      "hash": "#/complaints?tab=processing",
+      "label": "投诉管理 / 处理中",
+      "file": "038-complaints-processing.png",
+      "size": 101141,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 724
+      }
+    },
+    {
+      "id": "complaints-completed",
+      "hash": "#/complaints?tab=completed",
+      "label": "投诉管理 / 已完成",
+      "file": "039-complaints-completed.png",
+      "size": 100931,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 724
+      }
+    },
+    {
+      "id": "materials-approval",
+      "hash": "#/materials?tab=approval",
+      "label": "物料申请 / 申请审批",
+      "file": "040-materials-approval.png",
+      "size": 106928,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 791
+      }
+    },
+    {
+      "id": "materials-early",
+      "hash": "#/materials?tab=early",
+      "label": "物料申请 / 提前申请",
+      "file": "041-materials-early.png",
+      "size": 106934,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 791
+      }
+    },
+    {
+      "id": "materials-shipping",
+      "hash": "#/materials?tab=shipping",
+      "label": "物料申请 / 待发货",
+      "file": "042-materials-shipping.png",
+      "size": 106919,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 791
+      }
+    },
+    {
+      "id": "materials-completed",
+      "hash": "#/materials?tab=completed",
+      "label": "物料申请 / 已完成",
+      "file": "043-materials-completed.png",
+      "size": 106925,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 791
+      }
+    },
+    {
+      "id": "materials-rejected",
+      "hash": "#/materials?tab=rejected",
+      "label": "物料申请 / 已拒绝",
+      "file": "044-materials-rejected.png",
+      "size": 106985,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 791
+      }
+    },
+    {
+      "id": "material-catalog-all",
+      "hash": "#/material-catalog?tab=all",
+      "label": "物料与库存 / 全部物料",
+      "file": "045-material-catalog-all.png",
+      "size": 98197,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 683
+      }
+    },
+    {
+      "id": "material-catalog-low",
+      "hash": "#/material-catalog?tab=low",
+      "label": "物料与库存 / 库存预警",
+      "file": "046-material-catalog-low.png",
+      "size": 98173,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 683
+      }
+    },
+    {
+      "id": "material-catalog-disabled",
+      "hash": "#/material-catalog?tab=disabled",
+      "label": "物料与库存 / 已停用",
+      "file": "047-material-catalog-disabled.png",
+      "size": 98103,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 683
+      }
+    },
+    {
+      "id": "couriers-companies",
+      "hash": "#/couriers?tab=companies",
+      "label": "物流配置 / 快递公司",
+      "file": "048-couriers-companies.png",
+      "size": 95268,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 657
+      }
+    },
+    {
+      "id": "couriers-query",
+      "hash": "#/couriers?tab=query",
+      "label": "物流配置 / 轨迹测试",
+      "file": "049-couriers-query.png",
+      "size": 95098,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 657
+      }
+    },
+    {
+      "id": "couriers-logs",
+      "hash": "#/couriers?tab=logs",
+      "label": "物流配置 / 接口日志",
+      "file": "050-couriers-logs.png",
+      "size": 95128,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 657
+      }
+    },
+    {
+      "id": "sn-replacement-records",
+      "hash": "#/sn-replacement?tab=records",
+      "label": "换 SN 管理 / 换 SN 记录",
+      "file": "051-sn-replacement-records.png",
+      "size": 104067,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 794
+      }
+    },
+    {
+      "id": "sn-replacement-pending",
+      "hash": "#/sn-replacement?tab=pending",
+      "label": "换 SN 管理 / 待确认",
+      "file": "052-sn-replacement-pending.png",
+      "size": 104152,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 794
+      }
+    },
+    {
+      "id": "sn-replacement-exceptions",
+      "hash": "#/sn-replacement?tab=exceptions",
+      "label": "换 SN 管理 / 异常记录",
+      "file": "053-sn-replacement-exceptions.png",
+      "size": 104119,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 794
+      }
+    },
+    {
+      "id": "service-transfer-all",
+      "hash": "#/service-transfer?tab=all",
+      "label": "售后转移 / 全部记录",
+      "file": "054-service-transfer-all.png",
+      "size": 103697,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 752
+      }
+    },
+    {
+      "id": "service-transfer-source",
+      "hash": "#/service-transfer?tab=source",
+      "label": "售后转移 / 待原方确认",
+      "file": "055-service-transfer-source.png",
+      "size": 104301,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 752
+      }
+    },
+    {
+      "id": "service-transfer-target",
+      "hash": "#/service-transfer?tab=target",
+      "label": "售后转移 / 待接收方确认",
+      "file": "056-service-transfer-target.png",
+      "size": 104202,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 752
+      }
+    },
+    {
+      "id": "service-transfer-completed",
+      "hash": "#/service-transfer?tab=completed",
+      "label": "售后转移 / 已完成",
+      "file": "057-service-transfer-completed.png",
+      "size": 103490,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 752
+      }
+    },
+    {
+      "id": "warranty-rules",
+      "hash": "#/warranty?tab=rules",
+      "label": "质保规则 / 质保规则",
+      "file": "058-warranty-rules.png",
+      "size": 101322,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 719
+      }
+    },
+    {
+      "id": "warranty-history",
+      "hash": "#/warranty?tab=history",
+      "label": "质保规则 / 变更记录",
+      "file": "059-warranty-history.png",
+      "size": 101272,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 719
+      }
+    },
+    {
+      "id": "approval-flow-flows",
+      "hash": "#/approval-flow?tab=flows",
+      "label": "审批流程 / 流程配置",
+      "file": "060-approval-flow-flows.png",
+      "size": 103788,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 712
+      }
+    },
+    {
+      "id": "approval-flow-members",
+      "hash": "#/approval-flow?tab=members",
+      "label": "审批流程 / 审核人员",
+      "file": "061-approval-flow-members.png",
+      "size": 103729,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 712
+      }
+    },
+    {
+      "id": "approval-flow-history",
+      "hash": "#/approval-flow?tab=history",
+      "label": "审批流程 / 变更记录",
+      "file": "062-approval-flow-history.png",
+      "size": 103706,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 712
+      }
+    },
+    {
+      "id": "issuance-all",
+      "hash": "#/issuance?tab=all",
+      "label": "物料发放记录 / 全部记录",
+      "file": "063-issuance-all.png",
+      "size": 107345,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 804
+      }
+    },
+    {
+      "id": "issuance-shipped",
+      "hash": "#/issuance?tab=shipped",
+      "label": "物料发放记录 / 运输中",
+      "file": "064-issuance-shipped.png",
+      "size": 107216,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 804
+      }
+    },
+    {
+      "id": "issuance-received",
+      "hash": "#/issuance?tab=received",
+      "label": "物料发放记录 / 已领取",
+      "file": "065-issuance-received.png",
+      "size": 107187,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 804
+      }
+    },
+    {
+      "id": "issuance-replaced",
+      "hash": "#/issuance?tab=replaced",
+      "label": "物料发放记录 / 已更换",
+      "file": "066-issuance-replaced.png",
+      "size": 107205,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 804
+      }
+    },
+    {
+      "id": "payments-all",
+      "hash": "#/payments?tab=all",
+      "label": "支付订单 / 全部订单",
+      "file": "067-payments-all.png",
+      "size": 110589,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "payments-pending",
+      "hash": "#/payments?tab=pending",
+      "label": "支付订单 / 待支付",
+      "file": "068-payments-pending.png",
+      "size": 110545,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "payments-paid",
+      "hash": "#/payments?tab=paid",
+      "label": "支付订单 / 支付成功",
+      "file": "069-payments-paid.png",
+      "size": 110538,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "payments-failed",
+      "hash": "#/payments?tab=failed",
+      "label": "支付订单 / 支付失败",
+      "file": "070-payments-failed.png",
+      "size": 110646,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "payments-refunded",
+      "hash": "#/payments?tab=refunded",
+      "label": "支付订单 / 已退款",
+      "file": "071-payments-refunded.png",
+      "size": 110467,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "banners-domestic",
+      "hash": "#/banners?tab=domestic",
+      "label": "Banner 管理 / 国内版",
+      "file": "072-banners-domestic.png",
+      "size": 99999,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 756
+      }
+    },
+    {
+      "id": "banners-overseas",
+      "hash": "#/banners?tab=overseas",
+      "label": "Banner 管理 / 海外版",
+      "file": "073-banners-overseas.png",
+      "size": 100034,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 756
+      }
+    },
+    {
+      "id": "banners-draft",
+      "hash": "#/banners?tab=draft",
+      "label": "Banner 管理 / 草稿",
+      "file": "074-banners-draft.png",
+      "size": 99777,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 756
+      }
+    },
+    {
+      "id": "admins-all",
+      "hash": "#/admins?tab=all",
+      "label": "管理员账号 / 全部账号",
+      "file": "075-admins-all.png",
+      "size": 111144,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 895
+      }
+    },
+    {
+      "id": "admins-platform",
+      "hash": "#/admins?tab=platform",
+      "label": "管理员账号 / 平台账号",
+      "file": "076-admins-platform.png",
+      "size": 110798,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 895
+      }
+    },
+    {
+      "id": "admins-dealer",
+      "hash": "#/admins?tab=dealer",
+      "label": "管理员账号 / 经销商账号",
+      "file": "077-admins-dealer.png",
+      "size": 111172,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 895
+      }
+    },
+    {
+      "id": "admins-locked",
+      "hash": "#/admins?tab=locked",
+      "label": "管理员账号 / 已锁定",
+      "file": "078-admins-locked.png",
+      "size": 111073,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 895
+      }
+    },
+    {
+      "id": "roles-roles",
+      "hash": "#/roles?tab=roles",
+      "label": "角色权限 / 角色列表",
+      "file": "079-roles-roles.png",
+      "size": 109959,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 769
+      }
+    },
+    {
+      "id": "roles-matrix",
+      "hash": "#/roles?tab=matrix",
+      "label": "角色权限 / 权限矩阵",
+      "file": "080-roles-matrix.png",
+      "size": 110146,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 769
+      }
+    },
+    {
+      "id": "roles-changes",
+      "hash": "#/roles?tab=changes",
+      "label": "角色权限 / 权限变更",
+      "file": "081-roles-changes.png",
+      "size": 110312,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 769
+      }
+    },
+    {
+      "id": "logs-operations",
+      "hash": "#/logs?tab=operations",
+      "label": "操作日志 / 操作日志",
+      "file": "082-logs-operations.png",
+      "size": 113171,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 967
+      }
+    },
+    {
+      "id": "logs-login",
+      "hash": "#/logs?tab=login",
+      "label": "操作日志 / 登录日志",
+      "file": "083-logs-login.png",
+      "size": 112896,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 967
+      }
+    },
+    {
+      "id": "logs-risk",
+      "hash": "#/logs?tab=risk",
+      "label": "操作日志 / 高风险操作",
+      "file": "084-logs-risk.png",
+      "size": 113123,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 967
+      }
+    },
+    {
+      "id": "logs-api",
+      "hash": "#/logs?tab=api",
+      "label": "操作日志 / 接口调用",
+      "file": "085-logs-api.png",
+      "size": 113114,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 967
+      }
+    },
+    {
+      "id": "dashboard-default",
+      "hash": "#/dashboard",
+      "label": "运营工作台",
+      "file": "086-dashboard-default.png",
+      "size": 171871,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1238
+      }
+    },
+    {
+      "id": "tasks-message",
+      "hash": "#/tasks?tab=message",
+      "label": "我的待办 / 留言",
+      "file": "087-tasks-message.png",
+      "size": 123456,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 746
+      }
+    },
+    {
+      "id": "warehouse-stock",
+      "hash": "#/warehouse?tab=stock",
+      "label": "仓库区",
+      "file": "088-warehouse-stock.png",
+      "size": 105987,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 736
+      }
+    },
+    {
+      "id": "warehouse-outbound",
+      "hash": "#/warehouse?tab=outbound",
+      "label": "设备出库",
+      "file": "089-warehouse-outbound.png",
+      "size": 105519,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 760
+      }
+    },
+    {
+      "id": "warehouse-transfer",
+      "hash": "#/warehouse?tab=transfer",
+      "label": "库存调货",
+      "file": "090-warehouse-transfer.png",
+      "size": 107518,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 775
+      }
+    },
+    {
+      "id": "warehouse-ownership",
+      "hash": "#/warehouse?tab=ownership",
+      "label": "归属查询",
+      "file": "091-warehouse-ownership.png",
+      "size": 109771,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 806
+      }
+    },
+    {
+      "id": "payment-settings-channels",
+      "hash": "#/payment-settings?tab=channels",
+      "label": "支付渠道",
+      "file": "092-payment-settings-channels.png",
+      "size": 76329,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 442
+      }
+    },
+    {
+      "id": "payment-settings-merchant",
+      "hash": "#/payment-settings?tab=merchant",
+      "label": "商户与密钥",
+      "file": "093-payment-settings-merchant.png",
+      "size": 78362,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 443
+      }
+    },
+    {
+      "id": "payment-settings-callback",
+      "hash": "#/payment-settings?tab=callback",
+      "label": "回调与通知",
+      "file": "094-payment-settings-callback.png",
+      "size": 77402,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 404
+      }
+    },
+    {
+      "id": "payment-settings-risk",
+      "hash": "#/payment-settings?tab=risk",
+      "label": "支付安全",
+      "file": "095-payment-settings-risk.png",
+      "size": 76907,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 419
+      }
+    },
+    {
+      "id": "settings-general",
+      "hash": "#/settings?tab=general",
+      "label": "基础信息",
+      "file": "096-settings-general.png",
+      "size": 77712,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 420
+      }
+    },
+    {
+      "id": "settings-deployment",
+      "hash": "#/settings?tab=deployment",
+      "label": "数据域与部署",
+      "file": "097-settings-deployment.png",
+      "size": 81639,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 527
+      }
+    },
+    {
+      "id": "settings-notification",
+      "hash": "#/settings?tab=notification",
+      "label": "通知策略",
+      "file": "098-settings-notification.png",
+      "size": 78932,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 420
+      }
+    },
+    {
+      "id": "settings-security",
+      "hash": "#/settings?tab=security",
+      "label": "安全策略",
+      "file": "099-settings-security.png",
+      "size": 84549,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 461
+      }
+    },
+    {
+      "id": "settings-dictionary",
+      "hash": "#/settings?tab=dictionary",
+      "label": "业务字典",
+      "file": "100-settings-dictionary.png",
+      "size": 75295,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 401
+      }
+    },
+    {
+      "id": "device-detail-overview",
+      "hash": "#/devices",
+      "action": "device-detail",
+      "modalTab": "overview",
+      "label": "制冰机 CI-02 / 设备概览",
+      "file": "101-device-detail-overview.png",
+      "size": 116062,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1271
+      }
+    },
+    {
+      "id": "device-detail-ownership",
+      "hash": "#/devices",
+      "action": "device-detail",
+      "modalTab": "ownership",
+      "label": "制冰机 CI-02 / 绑定与归属",
+      "file": "102-device-detail-ownership.png",
+      "size": 113187,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1239
+      }
+    },
+    {
+      "id": "device-detail-firmware",
+      "hash": "#/devices",
+      "action": "device-detail",
+      "modalTab": "firmware",
+      "label": "制冰机 CI-02 / 运行与固件",
+      "file": "103-device-detail-firmware.png",
+      "size": 110921,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1242
+      }
+    },
+    {
+      "id": "device-detail-service",
+      "hash": "#/devices",
+      "action": "device-detail",
+      "modalTab": "service",
+      "label": "制冰机 CI-02 / 售后记录",
+      "file": "104-device-detail-service.png",
+      "size": 127301,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1343
+      }
+    },
+    {
+      "id": "user-detail-overview",
+      "hash": "#/users",
+      "action": "user-detail",
+      "modalTab": "overview",
+      "label": "海风与帆 / 基本信息",
+      "file": "105-user-detail-overview.png",
+      "size": 100657,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1176
+      }
+    },
+    {
+      "id": "user-detail-devices",
+      "hash": "#/users",
+      "action": "user-detail",
+      "modalTab": "devices",
+      "label": "海风与帆 / 绑定设备",
+      "file": "106-user-detail-devices.png",
+      "size": 107156,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1224
+      }
+    },
+    {
+      "id": "user-detail-waypoints",
+      "hash": "#/users",
+      "action": "user-detail",
+      "modalTab": "waypoints",
+      "label": "海风与帆 / 航点数据",
+      "file": "107-user-detail-waypoints.png",
+      "size": 98860,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1147
+      }
+    },
+    {
+      "id": "user-detail-logs",
+      "hash": "#/users",
+      "action": "user-detail",
+      "modalTab": "logs",
+      "label": "海风与帆 / 操作记录",
+      "file": "108-user-detail-logs.png",
+      "size": 105384,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1219
+      }
+    },
+    {
+      "id": "repair-detail-overview",
+      "hash": "#/repairs",
+      "action": "repair-detail",
+      "modalTab": "overview",
+      "label": "制冷效果差 / 报修概览",
+      "file": "109-repair-detail-overview.png",
+      "size": 114365,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1143
+      }
+    },
+    {
+      "id": "repair-detail-flow",
+      "hash": "#/repairs",
+      "action": "repair-detail",
+      "modalTab": "flow",
+      "label": "制冷效果差 / 处理流程",
+      "file": "110-repair-detail-flow.png",
+      "size": 126072,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1189
+      }
+    },
+    {
+      "id": "repair-detail-reply",
+      "hash": "#/repairs",
+      "action": "repair-detail",
+      "modalTab": "reply",
+      "label": "制冷效果差 / 回复用户",
+      "file": "111-repair-detail-reply.png",
+      "size": 122648,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1144
+      }
+    },
+    {
+      "id": "repair-detail-logs",
+      "hash": "#/repairs",
+      "action": "repair-detail",
+      "modalTab": "logs",
+      "label": "制冷效果差 / 操作记录",
+      "file": "112-repair-detail-logs.png",
+      "size": 119452,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1173
+      }
+    },
+    {
+      "id": "dealer-detail-overview",
+      "hash": "#/dealers",
+      "action": "dealer-detail",
+      "modalTab": "overview",
+      "label": "深圳海航设备有限公司 / 基本信息",
+      "file": "113-dealer-detail-overview.png",
+      "size": 107999,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1083
+      }
+    },
+    {
+      "id": "dealer-detail-devices",
+      "hash": "#/dealers",
+      "action": "dealer-detail",
+      "modalTab": "devices",
+      "label": "深圳海航设备有限公司 / 设备与库存",
+      "file": "114-dealer-detail-devices.png",
+      "size": 112827,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1103
+      }
+    },
+    {
+      "id": "dealer-detail-service",
+      "hash": "#/dealers",
+      "action": "dealer-detail",
+      "modalTab": "service",
+      "label": "深圳海航设备有限公司 / 售后表现",
+      "file": "115-dealer-detail-service.png",
+      "size": 119975,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1152
+      }
+    },
+    {
+      "id": "dealer-detail-accounts",
+      "hash": "#/dealers",
+      "action": "dealer-detail",
+      "modalTab": "accounts",
+      "label": "深圳海航设备有限公司 / 账号与权限",
+      "file": "116-dealer-detail-accounts.png",
+      "size": 106569,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1046
+      }
+    },
+    {
+      "id": "project-detail-overview",
+      "hash": "#/projects",
+      "action": "project-detail",
+      "modalTab": "overview",
+      "label": "远航 18 / 项目概览",
+      "file": "117-project-detail-overview.png",
+      "size": 102227,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1108
+      }
+    },
+    {
+      "id": "project-detail-devices",
+      "hash": "#/projects",
+      "action": "project-detail",
+      "modalTab": "devices",
+      "label": "远航 18 / 关联设备",
+      "file": "118-project-detail-devices.png",
+      "size": 105897,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1135
+      }
+    },
+    {
+      "id": "project-detail-warranty",
+      "hash": "#/projects",
+      "action": "project-detail",
+      "modalTab": "warranty",
+      "label": "远航 18 / 质保信息",
+      "file": "119-project-detail-warranty.png",
+      "size": 99288,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1081
+      }
+    },
+    {
+      "id": "project-detail-service",
+      "hash": "#/projects",
+      "action": "project-detail",
+      "modalTab": "service",
+      "label": "远航 18 / 售后记录",
+      "file": "120-project-detail-service.png",
+      "size": 112592,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1174
+      }
+    },
+    {
+      "id": "complaint-detail-overview",
+      "hash": "#/complaints",
+      "action": "complaint-detail",
+      "modalTab": "overview",
+      "label": "设备运行异常未及时解决 / 投诉概览",
+      "file": "121-complaint-detail-overview.png",
+      "size": 104135,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 937
+      }
+    },
+    {
+      "id": "complaint-detail-handling",
+      "hash": "#/complaints",
+      "action": "complaint-detail",
+      "modalTab": "handling",
+      "label": "设备运行异常未及时解决 / 处理过程",
+      "file": "122-complaint-detail-handling.png",
+      "size": 114474,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1000
+      }
+    },
+    {
+      "id": "complaint-detail-reply",
+      "hash": "#/complaints",
+      "action": "complaint-detail",
+      "modalTab": "reply",
+      "label": "设备运行异常未及时解决 / 回复用户",
+      "file": "123-complaint-detail-reply.png",
+      "size": 111296,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 941
+      }
+    },
+    {
+      "id": "complaint-detail-logs",
+      "hash": "#/complaints",
+      "action": "complaint-detail",
+      "modalTab": "logs",
+      "label": "设备运行异常未及时解决 / 操作记录",
+      "file": "124-complaint-detail-logs.png",
+      "size": 107355,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 961
+      }
+    },
+    {
+      "id": "modal-device-create",
+      "hash": "#/devices",
+      "action": "device-create",
+      "label": "录入单台设备",
+      "file": "125-modal-device-create.png",
+      "size": 126426,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1179
+      }
+    },
+    {
+      "id": "modal-import-devices",
+      "hash": "#/devices",
+      "action": "import-devices",
+      "label": "批量导入设备",
+      "file": "126-modal-import-devices.png",
+      "size": 129309,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1219
+      }
+    },
+    {
+      "id": "modal-ota-release",
+      "hash": "#/ota",
+      "action": "ota-release",
+      "label": "新建固件版本",
+      "file": "127-modal-ota-release.png",
+      "size": 107866,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1050
+      }
+    },
+    {
+      "id": "modal-dealer-edit",
+      "hash": "#/dealers",
+      "action": "dealer-edit",
+      "label": "新增/编辑经销商",
+      "file": "128-modal-dealer-edit.png",
+      "size": 125123,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1012
+      }
+    },
+    {
+      "id": "modal-project-edit",
+      "hash": "#/projects",
+      "action": "project-edit",
+      "label": "新增/编辑项目",
+      "file": "129-modal-project-edit.png",
+      "size": 119482,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1044
+      }
+    },
+    {
+      "id": "modal-assign-repair",
+      "hash": "#/devices",
+      "action": "assign-repair",
+      "label": "分配报修处理",
+      "file": "130-modal-assign-repair.png",
+      "size": 129407,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1200
+      }
+    },
+    {
+      "id": "modal-message-reply",
+      "hash": "#/devices",
+      "action": "message-reply",
+      "label": "回复用户",
+      "file": "131-modal-message-reply.png",
+      "size": 128158,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1180
+      }
+    },
+    {
+      "id": "modal-complaint-detail-modal",
+      "hash": "#/devices",
+      "action": "complaint-detail-modal",
+      "label": "投诉详情",
+      "file": "132-modal-complaint-detail-modal.png",
+      "size": 128073,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1210
+      }
+    },
+    {
+      "id": "modal-material-approve",
+      "hash": "#/materials",
+      "action": "material-approve",
+      "label": "审核物料申请",
+      "file": "133-modal-material-approve.png",
+      "size": 112843,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 966
+      }
+    },
+    {
+      "id": "modal-material-edit",
+      "hash": "#/materials",
+      "action": "material-edit",
+      "label": "新增/编辑物料",
+      "file": "134-modal-material-edit.png",
+      "size": 109115,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 871
+      }
+    },
+    {
+      "id": "modal-courier-edit",
+      "hash": "#/couriers",
+      "action": "courier-edit",
+      "label": "快递公司配置",
+      "file": "135-modal-courier-edit.png",
+      "size": 107094,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 750
+      }
+    },
+    {
+      "id": "modal-courier-test",
+      "hash": "#/couriers",
+      "action": "courier-test",
+      "label": "测试物流轨迹",
+      "file": "136-modal-courier-test.png",
+      "size": 106272,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 778
+      }
+    },
+    {
+      "id": "modal-sn-swap",
+      "hash": "#/sn-replacement",
+      "action": "sn-swap",
+      "label": "执行换 SN",
+      "file": "137-modal-sn-swap.png",
+      "size": 118261,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 917
+      }
+    },
+    {
+      "id": "modal-service-transfer",
+      "hash": "#/devices",
+      "action": "service-transfer",
+      "label": "发起售后责任转移",
+      "file": "138-modal-service-transfer.png",
+      "size": 130116,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1151
+      }
+    },
+    {
+      "id": "modal-warranty-edit",
+      "hash": "#/warranty",
+      "action": "warranty-edit",
+      "label": "编辑质保规则",
+      "file": "139-modal-warranty-edit.png",
+      "size": 112684,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 817
+      }
+    },
+    {
+      "id": "modal-flow-edit",
+      "hash": "#/approval-flow",
+      "action": "flow-edit",
+      "label": "编辑审批流程",
+      "file": "140-modal-flow-edit.png",
+      "size": 115412,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 839
+      }
+    },
+    {
+      "id": "modal-banner-edit",
+      "hash": "#/banners",
+      "action": "banner-edit",
+      "label": "新增/编辑 Banner",
+      "file": "141-modal-banner-edit.png",
+      "size": 113581,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 891
+      }
+    },
+    {
+      "id": "modal-admin-edit",
+      "hash": "#/admins",
+      "action": "admin-edit",
+      "label": "新增/编辑管理员",
+      "file": "142-modal-admin-edit.png",
+      "size": 112365,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 989
+      }
+    },
+    {
+      "id": "modal-reset-password",
+      "hash": "#/admins",
+      "action": "reset-password",
+      "label": "重置管理员密码",
+      "file": "143-modal-reset-password.png",
+      "size": 114439,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 995
+      }
+    },
+    {
+      "id": "modal-role-permissions",
+      "hash": "#/roles",
+      "action": "role-permissions",
+      "label": "配置角色权限",
+      "file": "144-modal-role-permissions.png",
+      "size": 103249,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 884
+      }
+    },
+    {
+      "id": "modal-stock-in",
+      "hash": "#/warehouse",
+      "action": "stock-in",
+      "label": "设备入库",
+      "file": "145-modal-stock-in.png",
+      "size": 111250,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 830
+      }
+    },
+    {
+      "id": "modal-outbound-create",
+      "hash": "#/warehouse",
+      "action": "outbound-create",
+      "label": "新建出库单",
+      "file": "146-modal-outbound-create.png",
+      "size": 107295,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 849
+      }
+    },
+    {
+      "id": "modal-transfer-approve",
+      "hash": "#/warehouse",
+      "action": "transfer-approve",
+      "label": "审批库存调货",
+      "file": "147-modal-transfer-approve.png",
+      "size": 114405,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 909
+      }
+    },
+    {
+      "id": "drawer-notifications",
+      "hash": "#/dashboard",
+      "action": "notifications",
+      "label": "通知中心",
+      "file": "148-drawer-notifications.png",
+      "size": 130923,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1372
+      }
+    },
+    {
+      "id": "modal-domain-switch",
+      "hash": "#/dashboard",
+      "action": "domain-switch",
+      "label": "切换数据域",
+      "file": "149-modal-domain-switch.png",
+      "size": 163209,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1344
+      }
+    },
+    {
+      "id": "modal-account-menu",
+      "hash": "#/dashboard",
+      "action": "account-menu",
+      "label": "账号与会话",
+      "file": "150-modal-account-menu.png",
+      "size": 164200,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1377
+      }
+    },
+    {
+      "id": "modal-force-unbind",
+      "hash": "#/devices",
+      "action": "force-unbind",
+      "label": "强制解绑确认",
+      "file": "151-modal-force-unbind.png",
+      "size": 126504,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1139
+      }
+    },
+    {
+      "id": "modal-remote-disable",
+      "hash": "#/devices",
+      "action": "remote-disable",
+      "label": "远程禁用确认",
+      "file": "152-modal-remote-disable.png",
+      "size": 126168,
+      "valid": true,
+      "layout": {
+        "hasMain": true,
+        "viewportWidth": 1440,
+        "scrollWidth": 1440,
+        "clippedControls": 0,
+        "bodyText": 1139
+      }
+    }
+  ]
+}

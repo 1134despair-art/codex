@@ -1,0 +1,129 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import AppIcon from '@/components/AppIcon.vue'
+import { moduleConfigs, statusLabels } from '@/config/modules'
+import { hasPermission } from '@/config/permissions'
+import { mockService } from '@/services/mock'
+import { useAuthStore } from '@/stores/auth'
+import type { ColumnConfig, DetailTabConfig, EntityRecord } from '@/types'
+
+const props = defineProps<{ moduleKey: string; record: EntityRecord; tab: DetailTabConfig }>()
+const emit = defineEmits<{ action: [payload: { moduleKey: string; action: string; record: EntityRecord }] }>()
+const auth = useAuthStore()
+const canUnbind = computed(() => auth.session?.role === 'platform' || hasPermission(auth.permissions, 'devices:unbind'))
+const loading = ref(false)
+const rows = ref<EntityRecord[]>([])
+
+const internalFields = new Set(['id', 'ownerId', 'domain', 'subjectId', 'subjectCode'])
+const labels: Record<string, string> = {
+  code: '业务编号', name: '名称', account: '账号', category: '类型', region: '地区', owner: '归属方', status: '状态', createdAt: '创建时间', updatedAt: '更新时间', summary: '说明', deviceSN: '设备 SN', deviceModel: '设备型号', country: '销售国家', activation: '激活状态', activationDate: '激活日期', firmware: '固件版本', bindingStatus: '绑定状态', boundAt: '绑定时间', shipOwner: '船东姓名', usageRegion: '使用地区', warrantyUntil: '质保到期日', productType: '产品类型', dealer: '经销商', laborMonths: '免人工费时间', materialMonths: '物料质保时间', content: '内容', contact: '联系方式', faultCategory: '故障分类', assignee: '处理人', result: '处理结果', materialName: '物料名称', quantity: '数量', warrantyResult: '质保校验', courier: '快递公司', trackingNo: '物流单号', originalSN: '原 SN', newSN: '新 SN', sourceDealer: '原代理商', targetDealer: '目标代理商', channel: '支付/通知渠道', amount: '金额', paidAt: '支付时间', role: '角色', dataScope: '数据范围', operationType: '操作类型', ip: '来源 IP', deviceInfo: '设备信息', levels: '审核层级', members: '审核人员', recipient: '发放对象', issuedAt: '发放时间', replacedAt: '更换时间', forceUpdate: '强制更新', releaseAt: '发布时间', targetKey: '跳转标识', targetLabel: '跳转目标', audienceLabel: '适用用户', legacyTarget: '历史跳转值', sort: '排序', phone: '联系电话', email: '联系邮箱', parentDealer: '上级经销商', tier: '经销商层级', deviceCount: '绑定/管理设备数', lastActive: '最近活跃', applyTime: '申请时间', warehouseLocation: '库位',
+}
+
+const sourceRecord = computed(() => props.tab.source && rows.value[0] ? rows.value[0] : props.record)
+const fieldEntries = computed(() => {
+  const config = moduleConfigs[props.moduleKey]
+  const preferred = props.tab.key === 'overview'
+    ? [...config.columns.map((item) => item.field), ...config.fields.filter((item) => !(item.sensitive && auth.session?.role !== 'platform')).map((item) => item.field)]
+    : Object.keys(sourceRecord.value)
+  return [...new Set(preferred)]
+    .filter((field) => !internalFields.has(field) && sourceRecord.value[field] !== undefined && sourceRecord.value[field] !== '')
+    .map((field) => ({ field, label: labels[field] || config.fields.find((item) => item.field === field)?.label || field, value: sourceRecord.value[field] }))
+})
+
+function display(value: unknown) {
+  if (value === true) return '是'
+  if (value === false) return '否'
+  if (value === null || value === undefined || value === '') return '-'
+  return String(value)
+}
+
+function isStatusField(field: string) {
+  return ['status', 'activation', 'bindingStatus', 'warrantyResult'].includes(field)
+}
+
+function displayField(field: string, value: unknown) {
+  if (isStatusField(field)) return statusMeta(value).label
+  if (field === 'account' && ['users', 'complaints'].includes(props.moduleKey)) return maskAccount(value)
+  if (/(At|Date|Until)$/.test(field) && typeof value === 'string') return value.replace('T', ' ').replace('.000Z', '').slice(0, 19)
+  return display(value)
+}
+
+function maskAccount(value: unknown) {
+  const account = display(value)
+  if (account.includes('@')) {
+    const [name, domain] = account.split('@')
+    return `${name.slice(0, 2)}${'*'.repeat(Math.max(3, name.length - 2))}@${domain}`
+  }
+  if (account.length >= 7) return `${account.slice(0, 3)}****${account.slice(-4)}`
+  return account
+}
+
+function statusMeta(value: unknown) {
+  const base = statusLabels[String(value)] || { label: display(value), tone: 'neutral' }
+  return { ...base, tone: moduleConfigs[props.moduleKey].statusTones?.[String(value)] || base.tone }
+}
+
+function isDate(column: ColumnConfig) {
+  return column.type === 'date'
+}
+
+async function load() {
+  rows.value = []
+  if (!props.tab.source) return
+  loading.value = true
+  try {
+    const response = await mockService.related(props.moduleKey, props.record.id, props.tab.source)
+    rows.value = response.data
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(() => [props.record.id, props.tab.key], load, { immediate: true })
+</script>
+
+<template>
+  <div v-loading="loading" class="domain-detail-panel" :data-tab="tab.key">
+    <dl v-if="tab.kind === 'fields'" class="detail-grid">
+      <div v-for="item in fieldEntries" :key="item.field">
+        <dt>{{ item.label }}</dt>
+        <dd>
+          <span v-if="isStatusField(item.field)" class="status-chip" :data-tone="statusMeta(item.value).tone"><i></i>{{ displayField(item.field, item.value) }}</span>
+          <span v-else>{{ displayField(item.field, item.value) }}</span>
+        </dd>
+      </div>
+    </dl>
+
+    <template v-else-if="tab.kind === 'table'">
+      <div class="related-head">
+        <div><div class="eyebrow">{{ record.code }}</div><h3>{{ tab.title || tab.label }}</h3><p>{{ tab.description || `查看与当前记录关联的${tab.label}。` }}</p></div>
+        <span class="relation-count">{{ rows.length }} 条记录</span>
+      </div>
+      <el-table :data="rows" max-height="360" class="detail-related-table">
+        <el-table-column v-for="column in tab.columns" :key="column.field" :prop="column.field" :label="column.label" :width="column.width" :min-width="column.minWidth" show-overflow-tooltip>
+          <template #default="scope">
+            <span v-if="column.type === 'status'" class="status-chip" :data-tone="statusMeta(scope.row[column.field]).tone"><i></i>{{ statusMeta(scope.row[column.field]).label }}</span>
+            <code v-else-if="column.type === 'mono'" class="mono-cell">{{ display(scope.row[column.field]) }}</code>
+            <span v-else-if="isDate(column)">{{ display(scope.row[column.field]).replace('T', ' ').slice(0, 19) }}</span>
+            <span v-else>{{ display(scope.row[column.field]) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="tab.source === 'user-devices' && canUnbind" label="操作" width="96" fixed="right">
+          <template #default="scope"><el-button link type="danger" @click="emit('action', { moduleKey: 'devices', action: 'unbind', record: scope.row })">强制解绑</el-button></template>
+        </el-table-column>
+        <template #empty><div class="detail-empty"><AppIcon name="inbox" :size="28" /><strong>暂无{{ tab.label }}</strong><p>当前记录还没有关联数据。</p></div></template>
+      </el-table>
+    </template>
+
+    <template v-else>
+      <div class="related-head">
+        <div><div class="eyebrow">{{ record.code }}</div><h3>{{ tab.title || tab.label }}</h3><p>{{ tab.description || `按时间查看${tab.label}。` }}</p></div>
+        <span class="relation-count">{{ rows.length }} 个节点</span>
+      </div>
+      <div v-if="rows.length" class="timeline domain-timeline">
+        <article v-for="item in rows" :key="item.id"><i></i><div><strong>{{ item.title || item.name }}</strong><p>{{ item.content || item.summary }}</p><small>{{ display(item.createdAt).replace('T', ' ').slice(0, 19) }} · {{ item.operator || item.owner }}</small></div></article>
+      </div>
+      <div v-else class="detail-empty"><AppIcon name="inbox" :size="28" /><strong>暂无{{ tab.label }}</strong><p>后续关键操作会自动记录在这里。</p></div>
+    </template>
+  </div>
+</template>
