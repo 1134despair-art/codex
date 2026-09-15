@@ -1,0 +1,331 @@
+/* Shark Sister Admin Design System v1.0
+ * Source of truth for framework-independent and Element Plus tokens.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Brand scale, normalized from the reference blue (#2E73F8). */
+  --blue-50: #f2f7ff;
+  --blue-100: #e6f0ff;
+  --blue-200: #c7dcff;
+  --blue-300: #9fc2ff;
+  --blue-400: #6b9fff;
+  --blue-500: #3f82fa;
+  --blue-600: #2e73f8;
+  --blue-700: #1f5fd4;
+  --blue-800: #1d4fa8;
+  --blue-900: #1e447f;
+
+  /* Neutral scale. */
+  --neutral-0: #ffffff;
+  --neutral-25: #fcfcfd;
+  --neutral-50: #f7f9fc;
+  --neutral-100: #f2f4f7;
+  --neutral-200: #e7ebf0;
+  --neutral-300: #d5dae1;
+  --neutral-400: #98a2b3;
+  --neutral-500: #667085;
+  --neutral-600: #475467;
+  --neutral-700: #344054;
+  --neutral-800: #1d2939;
+  --neutral-900: #101828;
+
+  /* Semantic palettes. */
+  --green-50: #ecfdf3;
+  --green-200: #abefc6;
+  --green-600: #12b76a;
+  --green-700: #079455;
+  --amber-50: #fffaeb;
+  --amber-200: #fedf89;
+  --amber-600: #f79009;
+  --amber-700: #dc6803;
+  --red-50: #fef3f2;
+  --red-200: #fecdca;
+  --red-600: #f04438;
+  --red-700: #d92d20;
+  --purple-600: #7f56d9;
+  --cyan-500: #36bffa;
+  --teal-600: #0e9384;
+
+  /* Semantic color aliases. */
+  --color-brand-primary: var(--blue-600);
+  --color-brand-hover: var(--blue-700);
+  --color-brand-active: var(--blue-800);
+  --color-brand-subtle: var(--blue-50);
+  --color-brand-border: var(--blue-200);
+  --color-brand-on-primary: var(--neutral-0);
+
+  --color-page: var(--neutral-50);
+  --color-surface: var(--neutral-0);
+  --color-surface-subtle: var(--neutral-25);
+  --color-surface-muted: var(--neutral-100);
+  --color-surface-overlay: var(--neutral-0);
+  --color-text-primary: var(--neutral-900);
+  --color-text-secondary: var(--neutral-600);
+  --color-text-tertiary: var(--neutral-500);
+  --color-text-disabled: var(--neutral-400);
+  --color-text-inverse: var(--neutral-0);
+  --color-border-default: var(--neutral-200);
+  --color-border-strong: var(--neutral-300);
+  --color-border-focus: var(--blue-600);
+  --color-disabled-bg: var(--neutral-100);
+
+  --color-success: var(--green-600);
+  --color-success-hover: var(--green-700);
+  --color-success-bg: var(--green-50);
+  --color-success-border: var(--green-200);
+  --color-warning: var(--amber-600);
+  --color-warning-hover: var(--amber-700);
+  --color-warning-bg: var(--amber-50);
+  --color-warning-border: var(--amber-200);
+  --color-error: var(--red-600);
+  --color-error-hover: var(--red-700);
+  --color-error-bg: var(--red-50);
+  --color-error-border: var(--red-200);
+  --color-info: var(--blue-600);
+  --color-info-bg: var(--blue-50);
+  --color-info-border: var(--blue-200);
+
+  /* Reference screenshot's quiet category backgrounds. */
+  --color-category-blue-bg: #f2f7fd;
+  --color-category-green-bg: #f2faf8;
+  --color-category-orange-bg: #fef6f4;
+  --color-category-purple-bg: #f7f3fa;
+
+  /* Charts: semantic red/green should not be used as arbitrary categories. */
+  --chart-1: var(--blue-600);
+  --chart-2: var(--green-600);
+  --chart-3: var(--cyan-500);
+  --chart-4: var(--amber-600);
+  --chart-5: var(--purple-600);
+  --chart-6: #84adff;
+
+  /* Typography. */
+  --font-sans: Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-size-xs: 12px;
+  --font-size-compact: 13px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-display: 28px;
+  --line-height-xs: 18px;
+  --line-height-compact: 20px;
+  --line-height-sm: 22px;
+  --line-height-md: 24px;
+  --line-height-lg: 28px;
+  --line-height-xl: 32px;
+  --line-height-display: 36px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --letter-spacing-default: 0;
+
+  /* 4px spacing scale. */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius, border and elevation. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 999px;
+  --border-width: 1px;
+  --shadow-surface: 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-surface-raised: 0 6px 20px rgb(16 24 40 / 6%);
+  --shadow-dropdown: 0 8px 24px rgb(16 24 40 / 12%);
+  --shadow-modal: 0 20px 48px rgb(16 24 40 / 18%);
+  --focus-ring: 0 0 0 3px rgb(46 115 248 / 18%);
+
+  /* Layout and stable component dimensions. */
+  --layout-header-height: 64px;
+  --layout-sidebar-width: 200px;
+  --layout-sidebar-collapsed-width: 64px;
+  --layout-page-padding: 24px;
+  --layout-page-padding-sm: 16px;
+  --layout-content-max: none;
+  --layout-grid-gutter: 24px;
+  --layout-grid-gutter-sm: 16px;
+  --control-height-sm: 28px;
+  --control-height-md: 32px;
+  --control-height-lg: 40px;
+  --table-header-height: 44px;
+  --table-row-height: 48px;
+  --table-row-height-compact: 40px;
+  --card-padding: 20px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-button-size: 32px;
+
+  /* Motion and stacking. */
+  --duration-fast: 120ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+  --ease-standard: cubic-bezier(.2, 0, 0, 1);
+  --z-sticky: 20;
+  --z-dropdown: 1000;
+  --z-drawer: 2000;
+  --z-modal: 2100;
+  --z-toast: 3000;
+
+  /* Element Plus aliases for RuoYi Vue3 projects. */
+  --el-color-primary: var(--color-brand-primary);
+  --el-color-primary-light-3: var(--blue-400);
+  --el-color-primary-light-5: var(--blue-300);
+  --el-color-primary-light-7: var(--blue-200);
+  --el-color-primary-light-8: var(--blue-100);
+  --el-color-primary-light-9: var(--blue-50);
+  --el-color-primary-dark-2: var(--blue-700);
+  --el-color-success: var(--color-success);
+  --el-color-warning: var(--color-warning);
+  --el-color-danger: var(--color-error);
+  --el-color-error: var(--color-error);
+  --el-color-info: var(--color-text-tertiary);
+  --el-bg-color: var(--color-surface);
+  --el-bg-color-page: var(--color-page);
+  --el-bg-color-overlay: var(--color-surface-overlay);
+  --el-text-color-primary: var(--color-text-primary);
+  --el-text-color-regular: var(--color-text-secondary);
+  --el-text-color-secondary: var(--color-text-tertiary);
+  --el-text-color-placeholder: var(--color-text-disabled);
+  --el-text-color-disabled: var(--color-text-disabled);
+  --el-border-color: var(--color-border-default);
+  --el-border-color-light: var(--neutral-200);
+  --el-border-color-lighter: var(--neutral-100);
+  --el-border-color-extra-light: var(--neutral-50);
+  --el-border-color-dark: var(--color-border-strong);
+  --el-fill-color: var(--neutral-100);
+  --el-fill-color-light: var(--neutral-50);
+  --el-fill-color-lighter: var(--neutral-25);
+  --el-fill-color-blank: var(--neutral-0);
+  --el-mask-color: rgb(16 24 40 / 50%);
+  --el-font-family: var(--font-sans);
+  --el-font-size-base: var(--font-size-sm);
+  --el-border-radius-small: var(--radius-sm);
+  --el-border-radius-base: var(--radius-md);
+  --el-border-radius-round: var(--radius-full);
+  --el-box-shadow-light: var(--shadow-dropdown);
+  --el-box-shadow: var(--shadow-modal);
+}
+
+html,
+body {
+  min-width: 1024px;
+  color: var(--color-text-primary);
+  background: var(--color-page);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-sm);
+  letter-spacing: var(--letter-spacing-default);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: var(--letter-spacing-default);
+}
+
+:where(a, button, [role='button']):focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.identifier {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-card {
+  padding: var(--card-padding);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-surface);
+}
+
+.status-tag {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding-inline: var(--space-2);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.status-tag[data-status="success"] {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+}
+
+.status-tag[data-status="warning"] {
+  color: var(--color-warning-hover);
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-border);
+}
+
+.status-tag[data-status="error"] {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border-color: var(--color-error-border);
+}
+
+.status-tag[data-status="info"] {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+  border-color: var(--color-info-border);
+}
+
+.status-tag[data-status="neutral"] {
+  color: var(--color-text-secondary);
+  background: var(--color-surface-muted);
+  border-color: var(--color-border-strong);
+}
+
+[data-density="compact"] {
+  --control-height-md: 28px;
+  --table-row-height: var(--table-row-height-compact);
+  --card-padding: 16px;
+}
+
+@media (max-width: 1279px) {
+  :root {
+    --layout-page-padding: var(--layout-page-padding-sm);
+    --layout-grid-gutter: var(--layout-grid-gutter-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

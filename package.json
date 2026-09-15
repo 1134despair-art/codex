@@ -1,0 +1,46 @@
+{
+  "name": "shark-sister-admin-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:prod": "vue-tsc --noEmit && vite build",
+    "package:deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-deployment.ps1",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "screenshots": "node scripts/capture-screens.mjs",
+    "coverage:screens": "node scripts/generate-screen-matrix.mjs",
+    "coverage:requirements": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-coverage-generator.ps1",
+    "sync:assets": "node scripts/sync-assets.mjs"
+  },
+  "dependencies": {
+    "echarts": "6.1.0",
+    "element-plus": "2.14.4",
+    "exceljs": "4.4.0",
+    "pinia": "4.0.2",
+    "vue": "3.5.41",
+    "vue-router": "5.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.1",
+    "@vitejs/plugin-vue": "6.0.8",
+    "@vue/test-utils": "2.4.11",
+    "eslint": "10.8.1",
+    "eslint-plugin-vue": "10.10.0",
+    "happy-dom": "20.11.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0",
+    "vite": "8.2.1",
+    "vitest": "4.1.10",
+    "vue-tsc": "3.3.9"
+  }
+}

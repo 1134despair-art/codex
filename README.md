@@ -1,92 +1,60 @@
-# 鲨鱼妹妹web
+# 鲨鱼妹妹运营管理后台
 
-鲨鱼妹妹 / 鲨鱼妹妹web
+基于 Vue 3、Vite、TypeScript、Element Plus、Pinia、Vue Router、ECharts 和 ExcelJS 的纯前端静态后台。数据通过版本化 `localStorage` 持久化，接口形状兼容若依，后续可直接将 service 层替换为真实 API。
 
-## Getting started
+## 启动与构建
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://git.haichuang.pro/inner/rdc/pj_demo/prototype-demo/demo-demo-web.git
-git branch -M master
-git push -uf origin master
+```bash
+pnpm install
+pnpm sync:assets
+pnpm dev
+pnpm build
 ```
 
-## Integrate with your tools
+Jenkins / 原型广场统一使用：
 
-- [ ] [Set up project integrations](https://git.haichuang.pro/inner/rdc/pj_demo/prototype-demo/demo-demo-web/-/settings/integrations)
+```bash
+npm install
+npm run build:prod
+```
 
-## Collaborate with your team
+开发地址：`http://127.0.0.1:4174/#/login`。构建产物位于 `dist/`，可部署到任意静态文件服务，也可直接验证：
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```bash
+pnpm preview
+```
 
-## Test and Deploy
+## 演示账号
 
-Use the built-in continuous integration in GitLab.
+| 角色 | 账号 | 密码 | 数据范围 |
+| --- | --- | --- | --- |
+| 平台管理员 | `admin@shark.cn` | `Admin123!` | 全部数据，可切换国内/海外 |
+| 一级经销商 | `tier1@dealer.cn` | `Dealer123!` | 自身及二级经销商 |
+| 二级经销商 | `tier2@dealer.cn` | `Dealer123!` | 自身数据，首次登录需改密 |
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+登录页验证码默认已填入；点击验证码可刷新。连续输错密码 5 次会在本地锁定账号 30 分钟。
 
-***
+## 数据与接口
 
-# Editing this README
+- 数据库：`shark-sister-admin.db.v7`（首次启动自动迁移 v1-v6 数据，不清空已有 CRUD 记录）
+- 会话：`shark-sister-admin.session.v1`
+- 偏好：`shark-sister-admin.prefs.v1`
+- 列表接口：`{ code, msg, rows, total }`
+- 单体接口：`{ code, msg, data }`
+- 查询参数：`pageNum`、`pageSize`、`orderByColumn`、`isAsc` 和业务筛选字段
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+页面只调用 `src/services/`。管理员和经销商账号来自本地数据库，角色页面保存的权限会直接影响登录会话、菜单、路由和按钮。新增、编辑、审批、分配、出入库、调货、启停、解绑、换 SN、发布、数据范围过滤、通知和日志均会真实更新本地数据；设备远程控制、支付、真实物流查询、消息推送、CDN 和服务器部署只执行可追踪的确定性静态模拟或标记为非前端范围，不宣称已经连接真实外部系统。
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Banner 使用受控 `targetKey` 和适用用户下拉，不保存任意 URL。当前交付只修改后台，APP 读取这组配置属于后续集成范围。
 
-## Name
-Choose a self-explaining name for your project.
+## 验证
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm test:e2e
+pnpm build
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+运行 `node scripts/capture-screens.mjs` 可根据 `screen-manifest.ts` 重新生成 152 个页面、Tab、抽屉和弹窗状态。需求覆盖矩阵位于 `docs/requirements-coverage.md`。
