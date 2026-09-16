@@ -79,7 +79,7 @@ test('platform launch screen settings persist, export JSON and reject dealer acc
 
 test('platform, tier-1 and tier-2 accounts expose the demonstration menu and warranty matrix', async ({ page }) => {
   const platformMenus = [
-    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota',
+    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'cross-region-activations', 'devices', 'product-catalog', 'warehouses', 'warehouse', 'ota',
     'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
     'approval-center', 'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'after-sales-types',
     'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
@@ -130,6 +130,28 @@ test('platform, tier-1 and tier-2 accounts expose the demonstration menu and war
   await expect(tier2Rows).toHaveCount(1)
   await expect(tier2Rows.first()).toContainText('厦门蓝湾船舶服务')
   await expect(tier2Rows.first().getByRole('button', { name: '编辑', exact: true })).toBeVisible()
+})
+
+test('customer feedback admin surfaces stay visible and distinct', async ({ page }) => {
+  await login(page)
+  await expect(page.getByText('注册用户总数', { exact: true })).toBeVisible()
+  await expect(page.getByText('今日新增用户', { exact: true })).toBeVisible()
+  await expect(page.getByText('新增设备数量', { exact: true })).toBeVisible()
+
+  const warehouseLink = page.locator('.nav-item', { hasText: '仓库与库位' })
+  await expect(warehouseLink).toBeVisible()
+  await expect(page.locator('.nav-item', { hasText: '库位管理' })).toHaveCount(0)
+  await expect(page.locator('.nav-item--priority', { hasText: '审批中心' })).toBeVisible()
+
+  await page.goto('/#/devices')
+  await expect(page.getByRole('columnheader', { name: '销售地区' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '最近一次使用地区' })).toBeVisible()
+
+  await page.goto('/#/cross-region-activations')
+  await expect(page.getByRole('heading', { name: '跨区域激活异常' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '销售/归属区域' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '发生/使用区域' })).toBeVisible()
+  await expect(page.getByText('区域不匹配').first()).toBeVisible()
 })
 
 test('headquarters initiates a fee-bearing after-sales transfer through target confirmation and fee approval', async ({ page }) => {
@@ -417,9 +439,9 @@ test('warehouse creates a pending outbound order from an uploaded SN spreadsheet
 test('all 34 demo menus, tabs and available details are reachable', async ({ page }) => {
   test.setTimeout(120_000)
   const menus = [
-    ['dashboard', '首页'], ['users', '用户管理'], ['dealers', '经销商管理'], ['projects', '项目管理'], ['installation-transfers', '安装跨区审核'],
-    ['devices', '设备管理'], ['product-catalog', '产品与型号'], ['warehouses', '仓库管理'], ['warehouse-locations', '库位管理'], ['warehouse', '仓库设备'], ['ota', 'OTA 管理'], ['repairs', '故障报修'],
-    ['messages', '客服留言'], ['complaints', '投诉管理'], ['materials', '物料与产品销售审批'], ['material-catalog', '物料与库存'],
+    ['dashboard', '首页'], ['users', '用户管理'], ['dealers', '经销商管理'], ['projects', '项目管理'], ['installation-transfers', '安装跨区审核'], ['cross-region-activations', '跨区域激活异常'],
+    ['devices', '设备管理'], ['product-catalog', '产品与型号'], ['warehouses', '仓库与库位'], ['warehouse', '仓库设备'], ['ota', 'OTA 管理'], ['repairs', '故障报修'],
+    ['messages', '客服留言'], ['complaints', '投诉管理'], ['materials', '物料采购'], ['material-catalog', '物料与库存'],
     ['issuance', '物料发放记录'], ['approval-center', '审批中心'], ['couriers', '物流配置'], ['sn-replacement', '换 SN 管理'],
     ['service-transfer', '售后转移'], ['warranty', '质保规则'], ['approval-flow', '审批流程'], ['after-sales-types', '售后类型配置'],
     ['payments', '支付订单'], ['payment-settings', '支付配置'], ['banners', 'Banner 管理'], ['faq-documents', '常见问题 PDF'], ['support-settings', '客服信息'],
@@ -491,7 +513,7 @@ test('1024px layout collapses the sidebar without page overflow', async ({ page 
 test('all 34 business routes stay nonblank and overflow-free at both acceptance viewports', async ({ page }) => {
   test.setTimeout(90_000)
   const routes = [
-    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota', 'repairs',
+    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'cross-region-activations', 'devices', 'product-catalog', 'warehouses', 'warehouse', 'ota', 'repairs',
     'messages', 'complaints', 'materials', 'material-catalog', 'issuance', 'approval-center', 'couriers',
     'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'after-sales-types', 'payments',
     'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',

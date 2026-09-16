@@ -148,8 +148,8 @@ describe('RuoYi-compatible mock service', () => {
     expect(flow.code, flow.msg).toBe(200)
     expect(flow.data?.code).toMatch(/^APF-\d{11}$/)
     expect(flow.data?.category).toBe('流程配置')
-    expect(flow.data?.flowTypeLabel).toBe('物料与产品销售审批')
-    expect(flow.data?.menuLabel).toBe('物料与产品销售审批')
+    expect(flow.data?.flowTypeLabel).toBe('物料采购')
+    expect(flow.data?.menuLabel).toBe('物料采购')
     const visible = await mockService.list('approval-flow', { pageNum: 1, pageSize: 20, tab: 'flows' })
     expect(visible.rows.some((item) => item.id === flow.data?.id)).toBe(true)
 

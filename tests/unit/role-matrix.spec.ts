@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const expectedMenus = {
   platform: [
-    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota',
+    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'cross-region-activations', 'devices', 'product-catalog', 'warehouses', 'warehouse', 'ota',
     'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
     'approval-center', 'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'after-sales-types',
     'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',

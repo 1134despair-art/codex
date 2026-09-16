@@ -23,7 +23,7 @@ export const LEGACY_DATABASE_KEY = 'shark-sister-admin.db.v1'
 
 const now = () => new Date().toISOString()
 const approvalMenuLabels: Record<string, string> = {
-  materials: '物料与产品销售审批',
+  materials: '物料采购',
   warehouse: '仓库设备（调货审批）',
   'service-transfer': '售后转移（费用审批）',
 }
@@ -431,6 +431,64 @@ function normalizeDeviceRecords(records: Record<string, EntityRecord[]>) {
     request.replacementDeviceModel = replacementIdentity.deviceModel
     request.replacementDeviceType = replacementIdentity.deviceType
   })
+}
+
+function normalizeCustomerFeedbackAdjustments(records: Record<string, EntityRecord[]>) {
+  const devices = records.devices || []
+  for (const device of devices) {
+    if (!device.lastUsedRegion) device.lastUsedRegion = device.activation === 'inactive' ? '尚未获得用户授权' : String(device.region || '暂无授权上报')
+    if (!device.lastUsedAt && device.activation !== 'inactive') device.lastUsedAt = device.updatedAt
+  }
+
+  records['cross-region-activations'] ||= []
+  const anomalySeeds = [
+    { code: 'CRA-20260915001', device: devices.find((item) => item.code === 'BX202608100021') || devices.find((item) => item.domain === 'cn'), usedRegion: '中国 · 福建省厦门市', occurredAt: '2026-09-15T06:42:00.000Z', status: 'pending' },
+    { code: 'CRA-20260914002', device: devices.find((item) => item.code === 'BX202606120094') || devices.find((item) => item.domain === 'global'), usedRegion: '美国 · Nevada', occurredAt: '2026-09-13T18:30:00.000Z', status: 'resolved' },
+  ]
+  for (const [index, seed] of anomalySeeds.entries()) {
+    if (!seed.device || records['cross-region-activations'].some((item) => item.code === seed.code)) continue
+    seed.device.lastUsedRegion = seed.usedRegion
+    seed.device.lastUsedAt = seed.occurredAt
+    appendEntity(records, 'cross-region-activations', {
+      code: seed.code,
+      name: `${seed.device.deviceName || seed.device.name}跨区域激活`,
+      deviceId: seed.device.id,
+      deviceSN: seed.device.code,
+      deviceName: seed.device.deviceName || seed.device.name,
+      salesRegion: seed.device.region,
+      usedRegion: seed.usedRegion,
+      exceptionType: '区域不匹配',
+      occurredAt: seed.occurredAt,
+      locationSource: 'APP 用户授权定位（Mock）',
+      summary: index === 0 ? '设备销售/归属区域与本次激活地区不一致，APP 已模拟上报异常。' : '区域差异已登记处理；当前记录仅用于后台流程演示。',
+      status: seed.status,
+      owner: seed.device.owner,
+      ownerId: seed.device.ownerId,
+      domain: seed.device.domain,
+    })
+  }
+  for (const anomaly of records['cross-region-activations']) {
+    const device = devices.find((item) => item.id === anomaly.deviceId || item.code === anomaly.deviceSN)
+    if (!device) continue
+    anomaly.deviceId = device.id
+    anomaly.deviceSN = device.code
+    anomaly.deviceName = device.deviceName || device.name
+    anomaly.salesRegion ||= device.region
+    anomaly.locationSource ||= 'APP 用户授权定位（Mock）'
+    device.lastUsedRegion = anomaly.usedRegion || device.lastUsedRegion
+    device.lastUsedAt = anomaly.occurredAt || device.lastUsedAt
+  }
+
+  for (const moduleKey of ['approval-flow', 'approval-instances']) {
+    for (const record of records[moduleKey] || []) if (record.menuKey === 'materials') record.menuLabel = approvalMenuLabels.materials
+  }
+  const headquartersRole = records.roles?.find((item) => item.roleKey === 'custom' && item.name === '总部售后')
+  if (headquartersRole) {
+    const permissions = Array.isArray(headquartersRole.permissions) ? headquartersRole.permissions.map(String) : []
+    const required = ['cross-region-activations:view', 'cross-region-activations:export']
+    headquartersRole.permissions = [...new Set([...permissions, ...required])]
+    headquartersRole.permissionCount = (headquartersRole.permissions as string[]).length
+  }
 }
 
 function normalizeMeetingAdjustments(records: Record<string, EntityRecord[]>) {
@@ -1445,6 +1503,7 @@ export function migrateDatabase(source?: { version?: number; records?: Record<st
   normalizeMeetingAdjustments(seed.records)
   normalizeV14Adjustments(seed.records)
   normalizeV15Adjustments(seed.records)
+  normalizeCustomerFeedbackAdjustments(seed.records)
   normalizeDocumentIssueAdjustments(seed.records)
   normalizeDeviceBusinessLinks(seed.records)
   seed.version = 15

@@ -31,6 +31,18 @@ const notifications = computed(() => {
     .slice(0, 20)
 })
 const unreadNotifications = computed(() => notifications.value.filter((item) => item.status === 'unread').length)
+const pendingApprovalCount = computed(() => {
+  const session = auth.session
+  if (!session || !hasPermission(auth.permissions, 'approval-center:view')) return 0
+  const instanceIds = new Set(database.records('approval-instances')
+    .filter((item) => item.domain === session.domain && item.status === 'pending')
+    .map((item) => item.id))
+  return database.records('approval-steps').filter((item) =>
+    instanceIds.has(String(item.instanceId))
+    && item.status === 'pending'
+    && item.approverAccountId === session.accountId,
+  ).length
+})
 
 function runSearch() {
   if (!globalSearch.value.trim()) return
@@ -116,8 +128,8 @@ onBeforeUnmount(() => {
           <div class="nav-group-items">
             <template v-for="(item, index) in group.items" :key="item.route">
               <div v-if="!collapsed && item.section && item.section !== group.items[index - 1]?.section" class="nav-subgroup-title">{{ item.section }}</div>
-              <RouterLink :to="`/${item.route}`" class="nav-item" :class="{ 'nav-item--third-level': item.section }" :title="collapsed ? item.label : ''">
-                <AppIcon :name="item.icon" :size="18" /><span v-show="!collapsed">{{ item.label }}</span>
+              <RouterLink :to="`/${item.route}`" class="nav-item" :class="{ 'nav-item--third-level': item.section, 'nav-item--priority': item.route === 'approval-center' }" :title="collapsed ? item.label : ''">
+                <AppIcon :name="item.icon" :size="18" /><span v-show="!collapsed">{{ item.label }}</span><span v-if="item.route === 'approval-center' && pendingApprovalCount" class="nav-count" aria-label="待审批数量">{{ pendingApprovalCount > 99 ? '99+' : pendingApprovalCount }}</span>
               </RouterLink>
             </template>
           </div>

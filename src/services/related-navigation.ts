@@ -65,8 +65,13 @@ export function relatedNavigationCandidates(moduleKey: string, record: EntityRec
     add(candidate('projects', hasUser ? '查看关联项目' : '查看关联项目', 'ship-wheel', { deviceSN: record.code }, hasUser ? 'secondary' : 'primary'))
     add(candidate('dealers', '查看所属经销商', 'store', { organizationId: String(record.ownerId || '') }), Boolean(record.ownerId && record.ownerId !== 'platform'))
     add(candidate('warehouse', '查看仓库归属', 'warehouse', { deviceSN: record.code }, 'secondary', 'ownership'))
+    add(candidate('cross-region-activations', '查看跨区域激活异常', 'triangle-alert', { deviceSN: record.code }, 'secondary'))
     add(candidate('ota', '查看适用固件', 'package-up', { deviceType: String(record.name || '') }), Boolean(record.name))
     for (const [target, label, icon] of [['repairs', '查看报修', 'wrench'], ['complaints', '查看投诉', 'message-square-warning'], ['materials', '查看物料申请', 'package-check']] as const) add(candidate(target, label, icon, { deviceSN: record.code }))
+  }
+
+  if (moduleKey === 'cross-region-activations') {
+    add(candidate('devices', '查看异常设备', 'cpu', { code: String(record.deviceSN || '') }, 'primary'), Boolean(record.deviceSN))
   }
 
   if (moduleKey === 'warehouse') {

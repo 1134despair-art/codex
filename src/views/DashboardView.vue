@@ -36,7 +36,7 @@ function inPeriod(record: EntityRecord, field = 'createdAt') {
 
 function recalculatePeriod() {
   counts.value.todayUsers = sourceUsers.value.filter((item) => inPeriod(item)).length
-  counts.value.todayBindings = sourceDevices.value.filter((item) => inPeriod(item, 'boundAt')).length
+  counts.value.todayDevices = sourceDevices.value.filter((item) => inPeriod(item)).length
   counts.value.repairsCompleted = sourceRepairs.value.filter((item) => item.status === 'completed' && inPeriod(item, 'completedAt')).length
   counts.value.messagesCompleted = sourceMessages.value.filter((item) => item.status === 'completed' && inPeriod(item, 'updatedAt')).length
 }
@@ -45,6 +45,7 @@ const metrics = computed(() => [
   { label: '注册用户总数', value: counts.value.users || 0, icon: 'users', meta: '当前数据域', delta: '实时', tone: 'blue', route: '/users' },
   { label: '今日新增用户', value: counts.value.todayUsers || 0, icon: 'user-round', meta: '较昨日', delta: String((counts.value.todayUsers || 0) - (counts.value.yesterdayUsers || 0)), tone: 'green' },
   { label: '绑定设备总数', value: counts.value.devices || 0, icon: 'cpu', meta: '当前数据域', delta: '实时', tone: 'purple', route: '/devices' },
+  { label: '新增设备数量', value: counts.value.todayDevices || 0, icon: 'package-plus', meta: periodLabel.value, delta: '按录入时间', tone: 'cyan', route: '/devices' },
   { label: '待处理报修', value: counts.value.repairsPending || 0, icon: 'wrench', meta: '当前状态', delta: '需处理', tone: 'red', route: '/repairs?tab=pending' },
   { label: '待处理留言', value: counts.value.messagesPending || 0, icon: 'messages-square', meta: '当前状态', delta: '需回复', tone: 'red', route: '/messages?tab=unreplied' },
   { label: '经销商总数', value: counts.value.dealers || 0, icon: 'store', meta: '当前数据域', delta: '实时', tone: 'blue', route: '/dealers' },
@@ -52,7 +53,7 @@ const metrics = computed(() => [
 
 const overviewMetrics = computed(() => [
   { label: '新增注册用户', value: counts.value.todayUsers || 0, unit: '人', delta: '实时', tone: 'blue', points: '2,36 15,40 29,27 42,31 55,18 69,23 82,11 96,18 112,5 126,13' },
-  { label: '新增绑定设备', value: counts.value.todayBindings || 0, unit: '台', delta: '实时', tone: 'green', points: '2,34 15,18 29,39 43,28 57,17 70,24 84,12 98,18 112,4 126,22' },
+  { label: '新增设备', value: counts.value.todayDevices || 0, unit: '台', delta: '按录入时间', tone: 'green', points: '2,34 15,18 29,39 43,28 57,17 70,24 84,12 98,18 112,4 126,22' },
   { label: '报修处理数', value: counts.value.repairsCompleted || 0, unit: '单', delta: '实时', tone: 'orange', points: '2,17 15,29 28,36 42,20 56,37 70,24 84,32 98,8 112,27 126,20' },
   { label: '留言回复数', value: counts.value.messagesCompleted || 0, unit: '条', delta: '实时', tone: 'blue', points: '2,31 15,35 29,13 43,33 57,19 70,30 84,21 98,36 112,7 126,28' },
 ])
@@ -93,7 +94,7 @@ async function load() {
     users, devices, dealers, repairsPending, messagesPending, repairsCompleted, messagesCompleted,
     todayUsers: userResult.data.filter((item) => item.createdAt.startsWith(today)).length,
     yesterdayUsers: userResult.data.filter((item) => item.createdAt.startsWith(yesterday)).length,
-    todayBindings: deviceResult.data.filter((item) => String(item.boundAt || '').startsWith(today)).length,
+    todayDevices: deviceResult.data.filter((item) => item.createdAt.startsWith(today)).length,
   }
   tasks.value = repairResult.rows
   sourceUsers.value = userResult.data

@@ -18,7 +18,7 @@ const businessCodePrefixes: Record<string, string> = {
   admins: 'ADM', roles: 'ROL', dealers: 'DLR', ota: 'OTA',
 }
 const approvalMenuLabels: Record<string, string> = {
-  materials: '物料与产品销售审批',
+  materials: '物料采购',
   warehouse: '仓库设备（调货审批）',
   'service-transfer': '售后转移（费用审批）',
 }

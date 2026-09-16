@@ -36,7 +36,7 @@ export const rolePermissions: Record<RoleKey, string[]> = {
     'dashboard:view', 'users:view', 'devices:view', 'repairs:*', 'messages:*',
     'complaints:*', 'materials:view', 'materials:approve', 'materials:reject', 'materials:ship', 'materials:finance-confirm', 'materials:purchase-ship',
     'material-catalog:view', 'couriers:view', 'issuance:view', 'issuance:complete-replacement', 'service-transfer:view', 'service-transfer:create',
-    'approval-center:view', 'approval-center:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view',
+    'approval-center:view', 'approval-center:export', 'cross-region-activations:view', 'cross-region-activations:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view',
     'product-catalog:view', 'product-catalog:export',
     'service-transfer:process', 'service-transfer:approve-transfer-fee', 'service-transfer:reject-transfer-fee',
     'users:export', 'devices:export', 'repairs:export', 'messages:export', 'complaints:export',

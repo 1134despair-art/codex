@@ -32,11 +32,11 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: 'Arden', category: '电池组 BP-03', status: 'expired', summary: '质保已于 2026-08-03 到期', deviceSN: 'BX202409180205' },
   ],
   devices: [
-    { code: 'BX202608100021', name: '制冰机 CI-02', status: 'online', activation: 'normal', firmware: 'v2.3.7', account: '13812345678', summary: '船用 60kg/日' },
-    { code: 'BX202608090182', name: '海水淡化器 SW-04', status: 'online', activation: 'normal', firmware: 'v1.8.2', account: 'allen@oceanmail.com', summary: '400L/日' },
-    { code: 'BX202608070045', name: '顶流机 TF-01', status: 'offline', activation: 'inactive', firmware: 'v2.4.0', account: '-', summary: '24V 智能控制' },
-    { code: 'BX202607280311', name: '电池组 BP-03', status: 'offline', activation: 'normal', firmware: 'v3.1.1', account: 'marina@example.co.uk', summary: '48V 200Ah' },
-    { code: 'BX202606120094', name: '网络检测仪 ND-04', status: 'disabled', activation: 'normal', firmware: 'v1.4.6', account: 'marina@example.co.uk', summary: '4G/卫星' },
+    { code: 'BX202608100021', name: '制冰机 CI-02', status: 'online', activation: 'normal', firmware: 'v2.3.7', account: '13812345678', lastUsedRegion: '中国 · 福建省厦门市', lastUsedAt: '2026-09-15T06:42:00.000Z', summary: '船用 60kg/日' },
+    { code: 'BX202608090182', name: '海水淡化器 SW-04', status: 'online', activation: 'normal', firmware: 'v1.8.2', account: 'allen@oceanmail.com', lastUsedRegion: '中国 · 广东省深圳市', lastUsedAt: '2026-09-15T02:18:00.000Z', summary: '400L/日' },
+    { code: 'BX202608070045', name: '顶流机 TF-01', status: 'offline', activation: 'inactive', firmware: 'v2.4.0', account: '-', lastUsedRegion: '尚未获得用户授权', lastUsedAt: '', summary: '24V 智能控制' },
+    { code: 'BX202607280311', name: '电池组 BP-03', status: 'offline', activation: 'normal', firmware: 'v3.1.1', account: 'marina@example.co.uk', lastUsedRegion: '美国 · California', lastUsedAt: '2026-09-14T23:08:00.000Z', summary: '48V 200Ah' },
+    { code: 'BX202606120094', name: '网络检测仪 ND-04', status: 'disabled', activation: 'normal', firmware: 'v1.4.6', account: 'marina@example.co.uk', lastUsedRegion: '美国 · Nevada', lastUsedAt: '2026-09-13T18:30:00.000Z', summary: '4G/卫星' },
   ],
   'product-catalog': [
     { code: 'PROD-001', name: '顶流机', deviceType: '船载设备', deviceModel: 'TF-01', descriptor: '顶流机 TF-01', specification: '24V/48V 智能推流', referencePrice: 68000, status: 'normal' },
@@ -106,6 +106,10 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
   ],
   'installation-transfers': [
     { name: '远航 26 安装项目', category: '安装跨区审核', status: 'pending', projectCode: 'PRJ-20260821001', deviceSN: 'DL350020260888', factoryRegion: '广东省汕头市', installationRegion: '福建省厦门市', dealer: '厦门海航设备有限公司', summary: '出厂地区与安装地区不一致，等待平台审核' },
+  ],
+  'cross-region-activations': [
+    { code: 'CRA-20260915001', name: '制冰机跨区域激活', deviceSN: 'BX202608100021', deviceName: '制冰机', salesRegion: '中国 · 广东省深圳市', usedRegion: '中国 · 福建省厦门市', exceptionType: '区域不匹配', occurredAt: '2026-09-15T06:42:00.000Z', locationSource: 'APP 用户授权定位（Mock）', status: 'pending', summary: '设备销售/归属区域与本次激活地区不一致，APP 已模拟上报异常。', domain: 'cn' },
+    { code: 'CRA-20260914002', name: '网络检测仪跨区域激活', deviceSN: 'BX202606120094', deviceName: '网络检测仪', salesRegion: '美国 · California', usedRegion: '美国 · Nevada', exceptionType: '区域不匹配', occurredAt: '2026-09-13T18:30:00.000Z', locationSource: 'APP 用户授权定位（Mock）', status: 'resolved', summary: '区域差异已登记处理；当前记录仅用于后台流程演示。', domain: 'global' },
   ],
   warranty: [
     { name: '华南制冰机标准质保', category: '制冰机 CI-02', status: 'normal', summary: '人工费 24 个月 · 物料 24 个月' },
