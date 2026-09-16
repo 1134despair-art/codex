@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AppIcon from '@/components/AppIcon.vue'
+import { assetUrl } from '@/services/assets'
 import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{ mode: 'login' | 'first-password' }>()
@@ -14,6 +15,7 @@ const captchaExpiresAt = ref(Date.now() + 5 * 60 * 1000)
 const form = reactive({ account: 'admin@shark.cn', password: 'Admin123!', captcha: '7K4P', confirmPassword: '' })
 const title = computed(() => props.mode === 'login' ? '登录运营管理后台' : '首次登录修改密码')
 const lead = computed(() => props.mode === 'login' ? '使用管理员或经销商账号登录。连续输错 5 次将锁定 30 分钟。' : '首次登录必须设置新密码后才能进入后台。')
+const authBackground = assetUrl('/assets/backgrounds/auth-marine-operations.png')
 
 function refreshCaptcha() {
   captcha.value = Math.random().toString(36).slice(2, 6).toUpperCase()
@@ -54,7 +56,7 @@ onMounted(() => {
 <template>
   <main class="auth-shell">
     <section class="auth-visual" aria-label="鲨鱼妹妹海上设备运维场景">
-      <img :src="'./assets/backgrounds/auth-marine-operations.png'" alt="搭载海水处理设备的海上作业船">
+      <img :src="authBackground" alt="搭载海水处理设备的海上作业船">
       <div class="auth-visual-content">
         <div class="auth-brand"><span class="brand-mark"><AppIcon name="waves" :size="20" /></span><div><strong>鲨鱼妹妹</strong><small>Marine Equipment Operations</small></div></div>
         <div class="auth-story">

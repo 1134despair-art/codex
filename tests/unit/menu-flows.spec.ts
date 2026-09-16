@@ -60,7 +60,7 @@ describe('V3.2 complete menu business flows', () => {
   it('provides a transparent PNG icon for every sidebar menu item', () => {
     for (const group of navGroups) {
       for (const item of group.items) {
-        const iconPath = resolve(process.cwd(), 'public', 'assets', 'icons', 'line', `${item.icon}.png`)
+        const iconPath = resolve(process.cwd(), 'src', 'assets', 'icons', 'line', `${item.icon}.png`)
         expect(existsSync(iconPath), `${group.label}/${item.label}: ${item.icon}.png`).toBe(true)
       }
     }

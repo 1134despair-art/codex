@@ -6,6 +6,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import DomainDetailPanel from '@/components/DomainDetailPanel.vue'
 import { moduleConfigs, navGroups, statusLabels } from '@/config/modules'
 import { actionPermission, hasPermission } from '@/config/permissions'
+import { assetUrl } from '@/services/assets'
 import { mockService } from '@/services/mock'
 import {
   compressBanner,
@@ -844,7 +845,7 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
             <span v-else-if="column.type === 'money'" class="money-cell">¥{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
             <span v-else-if="column.type === 'number'">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
             <el-button v-else-if="column.type === 'link'" link type="primary" @click="openDetailTab(scope.row, 'devices')">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</el-button>
-            <img v-else-if="column.type === 'image'" class="table-image" :src="String(scope.row[column.field] || './assets/backgrounds/banner-maintenance.png')" alt="Banner">
+            <img v-else-if="column.type === 'image'" class="table-image" :src="assetUrl(String(scope.row[column.field] || './assets/backgrounds/banner-maintenance.png'))" alt="Banner">
             <span v-else>{{ displayColumn(column, scope.row) }}</span>
           </template>
         </el-table-column>
@@ -897,7 +898,7 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
           <el-input-number v-else-if="field.type === 'number'" v-model="editorForm[field.field]" :disabled="field.readonly" :min="field.min ?? 0" :max="field.max" controls-position="right" style="width: 100%" @change="refreshDerivedFields" />
           <el-switch v-else-if="field.type === 'switch'" v-model="editorForm[field.field]" />
           <el-upload v-else-if="field.type === 'image'" action="#" :auto-upload="false" :show-file-list="false" accept="image/png,image/jpeg,image/webp" :on-change="onBannerFile">
-            <div class="image-uploader"><img v-if="editorForm[field.field]" :src="String(editorForm[field.field])" alt="Banner 预览"><div v-else><AppIcon name="image-plus" :size="28" /><strong>选择 Banner 图片</strong><small>PNG/JPG/WebP，最大 2 MB，自动裁切为 3:1</small></div></div>
+            <div class="image-uploader"><img v-if="editorForm[field.field]" :src="assetUrl(String(editorForm[field.field]))" alt="Banner 预览"><div v-else><AppIcon name="image-plus" :size="28" /><strong>选择 Banner 图片</strong><small>PNG/JPG/WebP，最大 2 MB，自动裁切为 3:1</small></div></div>
           </el-upload>
           <el-upload v-else-if="field.type === 'firmware'" action="#" :auto-upload="false" :limit="1" accept=".bin,.zip,.img" :on-change="onFirmwareFile"><el-button><AppIcon name="file-up" :size="16" />选择固件文件</el-button><template #tip><div class="el-upload__tip">{{ editorForm[field.field] || '支持 .bin、.zip、.img，最大 50 MB；静态版不保存文件二进制。' }}</div></template></el-upload>
           <el-upload v-else-if="field.type === 'pdf'" action="#" :auto-upload="false" :limit="1" accept="application/pdf,.pdf" :on-change="onPdfFile"><el-button><AppIcon name="file-up" :size="16" />选择 PDF 文件</el-button><template #tip><div class="el-upload__tip">{{ editorForm[field.field] || '仅支持 PDF，最大 4 MB；保存后由 APP 常见问题入口展示。' }}</div></template></el-upload>

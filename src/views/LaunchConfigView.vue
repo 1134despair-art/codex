@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage, type UploadFile } from 'element-plus'
 import AppIcon from '@/components/AppIcon.vue'
 import { hasPermission } from '@/config/permissions'
+import { assetUrl } from '@/services/assets'
 import { useAuthStore } from '@/stores/auth'
 import { useDatabaseStore } from '@/stores/database'
 import type { EntityRecord } from '@/types'
@@ -239,7 +240,7 @@ function exportConfig() {
                     <el-upload action="#" :auto-upload="false" :show-file-list="false" accept="image/png,image/jpeg,image/webp" :on-change="(upload: UploadFile) => onOnboardingImage(index, upload)" @click.stop><el-button size="small"><AppIcon name="image-up" :size="15" />更换图片</el-button></el-upload>
                   </div>
                 </div>
-                <img :src="page.image || form.backgroundImage" alt="引导页图片预览">
+                <img :src="assetUrl(page.image || form.backgroundImage)" alt="引导页图片预览">
                 <div class="onboarding-page-actions">
                   <el-button text title="上移" :disabled="index === 0" @click.stop="moveOnboardingPage(index, -1)"><AppIcon name="chevron-left" :size="15" /></el-button>
                   <el-button text title="下移" :disabled="index === form.onboardingPages.length - 1" @click.stop="moveOnboardingPage(index, 1)"><AppIcon name="chevron-right" :size="15" /></el-button>
@@ -253,8 +254,8 @@ function exportConfig() {
           <div class="form-section">
             <div class="section-heading"><strong>图片素材</strong><span>PNG/JPG，单张不超过 5MB</span></div>
             <div class="asset-fields">
-              <div class="asset-field"><img :src="form.backgroundImage" alt="启动页背景预览"><div><strong>启动页背景</strong><p>建议 390 × 844 或同等比例</p><el-button size="small" @click="chooseImage('background')">更换图片</el-button><el-button size="small" link @click="restoreAsset('background')">恢复默认</el-button></div></div>
-              <div class="asset-field"><img class="logo-asset" :src="form.logoImage" alt="品牌标识预览"><div><strong>品牌标识</strong><p>建议透明 PNG，正方形画布</p><el-button size="small" @click="chooseImage('logo')">更换图片</el-button><el-button size="small" link @click="restoreAsset('logo')">恢复默认</el-button></div></div>
+              <div class="asset-field"><img :src="assetUrl(form.backgroundImage)" alt="启动页背景预览"><div><strong>启动页背景</strong><p>建议 390 × 844 或同等比例</p><el-button size="small" @click="chooseImage('background')">更换图片</el-button><el-button size="small" link @click="restoreAsset('background')">恢复默认</el-button></div></div>
+              <div class="asset-field"><img class="logo-asset" :src="assetUrl(form.logoImage)" alt="品牌标识预览"><div><strong>品牌标识</strong><p>建议透明 PNG，正方形画布</p><el-button size="small" @click="chooseImage('logo')">更换图片</el-button><el-button size="small" link @click="restoreAsset('logo')">恢复默认</el-button></div></div>
             </div>
           </div>
         </el-form>
@@ -266,10 +267,10 @@ function exportConfig() {
         <div class="preview-heading"><div><strong>实时预览</strong><span>390 × 844</span></div><span>{{ previewMode === 'splash' ? previewDuration : onboardingPreviewDuration }}</span></div>
         <el-radio-group v-model="previewMode" size="small" class="preview-mode"><el-radio-button value="splash">启动画面</el-radio-button><el-radio-button value="onboarding">首次引导</el-radio-button></el-radio-group>
         <div class="launch-preview">
-          <img class="preview-background" :src="previewMode === 'splash' ? form.backgroundImage : activeOnboardingPage?.image || form.backgroundImage" alt="">
+          <img class="preview-background" :src="assetUrl(previewMode === 'splash' ? form.backgroundImage : activeOnboardingPage?.image || form.backgroundImage)" alt="">
           <div class="preview-status"><b>9:41</b><span>▮▮▮⌁ ▰</span></div>
           <span v-if="form.allowSkip" class="preview-skip">跳过</span>
-          <div class="preview-content"><img :src="form.logoImage" alt=""><strong>{{ previewMode === 'splash' ? form.title : activeOnboardingPage?.title }}</strong><p>{{ previewMode === 'splash' ? form.subtitle : activeOnboardingPage?.summary }}</p></div>
+          <div class="preview-content"><img :src="assetUrl(form.logoImage)" alt=""><strong>{{ previewMode === 'splash' ? form.title : activeOnboardingPage?.title }}</strong><p>{{ previewMode === 'splash' ? form.subtitle : activeOnboardingPage?.summary }}</p></div>
           <div v-if="previewMode === 'onboarding'" class="preview-progress"><i v-for="(_, index) in form.onboardingPages" :key="index" :class="{ active: index === previewPageIndex }" @click="previewPageIndex = index" /></div>
           <div v-if="previewMode === 'splash' ? !form.enabled : !form.onboardingEnabled" class="preview-disabled"><AppIcon name="circle-x" :size="22" /><span>{{ previewMode === 'splash' ? '启动画面已停用' : '首次引导已停用' }}</span></div>
         </div>
