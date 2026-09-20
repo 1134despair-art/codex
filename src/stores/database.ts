@@ -1066,7 +1066,7 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
     payment.paymentCount = Number(payment.paymentCount || (Number(payment.paidAmount) > 0 ? 1 : 0))
     if (payment.status === 'paid') payment.status = 'verified'
     if (payment.status === 'partial' || payment.status === 'failed' || payment.status === 'refunded') payment.status = 'pending'
-    if (payment.status === 'verified' && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
+    if (Number(payment.paidAmount) > 0 && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
       appendEntity(records, 'payment-transactions', {
         id: `payment-transaction-${payment.id}-initial`,
         code: `PAY-${String(payment.code || payment.id).replace(/[^A-Za-z0-9]/g, '').slice(-14)}`,
@@ -1125,7 +1125,7 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
     payment.paymentCount = Number(payment.paymentCount || (Number(payment.paidAmount) > 0 ? 1 : 0))
     if (payment.status === 'paid') payment.status = 'verified'
     if (payment.status === 'partial' || payment.status === 'failed' || payment.status === 'refunded') payment.status = 'pending'
-    if (payment.status === 'verified' && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
+    if (Number(payment.paidAmount) > 0 && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
       appendEntity(records, 'payment-transactions', {
         id: `payment-transaction-${payment.id}-initial`, code: `PAY-${String(payment.code || payment.id).replace(/[^A-Za-z0-9]/g, '').slice(-14)}`,
         name: `${payment.name}付款记录`, paymentId: payment.id, subjectId: payment.subjectId, subjectCode: payment.subjectCode,
@@ -1157,6 +1157,59 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
       adjustment: index === sourceItems.length - 1 ? Math.round((Number(payment.amount || 0) - sourceTotal) * 100) / 100 : 0,
       status: payment.status, owner: payment.owner, ownerId: payment.ownerId, domain: payment.domain,
     }))
+  }
+
+  for (const payment of records.payments) {
+    const parentOrderCode = String(payment.parentOrderCode || payment.code || payment.id)
+    payment.orderRole = 'parent'
+    payment.parentOrderCode = parentOrderCode
+    const orderAmount = Math.round(Number(payment.orderAmount || payment.amount || 0) * 100) / 100
+    const transactions = records['payment-transactions']
+      .filter((item) => item.paymentId === payment.id || item.parentPaymentId === payment.id)
+      .sort((left, right) => {
+        const leftTime = String(left.paidAt || left.verifiedAt || left.createdAt || '')
+        const rightTime = String(right.paidAt || right.verifiedAt || right.createdAt || '')
+        return leftTime.localeCompare(rightTime) || String(left.id).localeCompare(String(right.id))
+      })
+    let accumulatedPaidAmount = 0
+    const verifiedChildOrderCodes: string[] = []
+    transactions.forEach((transaction, index) => {
+      const installmentNo = index + 1
+      const childOrderCode = `${parentOrderCode}-P${String(installmentNo).padStart(2, '0')}`
+      const currentPaymentAmount = Math.round(Number(transaction.currentPaymentAmount ?? transaction.amount ?? 0) * 100) / 100
+      const previousPaidAmount = accumulatedPaidAmount
+      accumulatedPaidAmount = Math.round((accumulatedPaidAmount + currentPaymentAmount) * 100) / 100
+      const paidAmountAfter = Math.min(orderAmount, accumulatedPaidAmount)
+      const remainingAmountAfter = Math.max(0, Math.round((orderAmount - paidAmountAfter) * 100) / 100)
+      Object.assign(transaction, {
+        code: childOrderCode,
+        childOrderCode,
+        name: `${parentOrderCode}第 ${installmentNo} 笔付款`,
+        paymentId: payment.id,
+        parentPaymentId: payment.id,
+        parentOrderCode,
+        installmentNo,
+        installmentLabel: `第 ${installmentNo} 笔付款`,
+        previousVerifiedChildOrderCodes: verifiedChildOrderCodes.join('、'),
+        orderAmount,
+        previousPaidAmount,
+        amount: currentPaymentAmount,
+        currentPaymentAmount,
+        paidAmountAfter,
+        remainingAmountAfter,
+        verifiedAt: transaction.verifiedAt || transaction.paidAt || transaction.updatedAt || transaction.createdAt,
+        verifiedBy: transaction.verifiedBy || transaction.operator || '系统迁移',
+        status: 'verified',
+      })
+      verifiedChildOrderCodes.push(childOrderCode)
+    })
+    if (!transactions.length) continue
+    payment.paymentCount = transactions.length
+    payment.lastChildOrderCode = transactions.at(-1)?.childOrderCode
+    payment.childOrderCodes = transactions.map((item) => String(item.childOrderCode)).join('、')
+    payment.paidAmount = Math.min(orderAmount, accumulatedPaidAmount)
+    payment.remainingAmount = Math.max(0, Math.round((orderAmount - Number(payment.paidAmount)) * 100) / 100)
+    payment.status = Number(payment.remainingAmount) <= 0.01 ? 'verified' : 'pending'
   }
 }
 

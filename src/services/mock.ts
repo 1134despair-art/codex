@@ -481,6 +481,7 @@ function recordPlatformBill(subject: EntityRecord, expense: EntityRecord, source
     subjectModule: sourceModule,
     recordedBy: expense.operator || useAuthStore().session?.displayName || '平台账单中心',
     paymentProof: expense.paymentProof || '',
+    orderRole: 'parent',
     status: 'verified',
     owner: subject.owner,
     ownerId: subject.ownerId,
@@ -488,12 +489,18 @@ function recordPlatformBill(subject: EntityRecord, expense: EntityRecord, source
   }
   const existing = database.records('payments').find((item) => item.expenseRecordId === expense.id)
   const payment = existing ? database.update('payments', existing.id, payload)! : database.create('payments', payload)
+  const parentOrderCode = String(payment.code)
+  database.update('payments', payment.id, { parentOrderCode, lastChildOrderCode: `${parentOrderCode}-P01` })
   if (!database.records('payment-transactions').some((item) => item.paymentId === payment.id)) {
     database.create('payment-transactions', {
-      code: `PAY-${Date.now().toString().slice(-12)}`, name: `${payment.name}付款记录`, paymentId: payment.id,
-      subjectId: subject.id, subjectCode: subject.code, amount: Number(expense.amount || 0),
+      code: `${parentOrderCode}-P01`, childOrderCode: `${parentOrderCode}-P01`, name: `${payment.name}第 1 笔付款`,
+      paymentId: payment.id, parentPaymentId: payment.id, parentOrderCode, installmentNo: 1, installmentLabel: '第 1 笔付款',
+      subjectId: subject.id, subjectCode: subject.code, orderAmount: Number(expense.amount || 0), previousPaidAmount: 0,
+      amount: Number(expense.amount || 0), currentPaymentAmount: Number(expense.amount || 0),
+      paidAmountAfter: Number(expense.amount || 0), remainingAmountAfter: 0,
       channel: '二维码支付', paymentReference: expense.paymentReference || '', paymentProof: expense.paymentProof || '',
       paidAt: expense.paidAt || expense.createdAt, operator: expense.operator || useAuthStore().session?.displayName || '平台账单中心',
+      verifiedAt: expense.paidAt || expense.createdAt, verifiedBy: expense.operator || useAuthStore().session?.displayName || '平台账单中心',
       status: 'verified', owner: subject.owner, ownerId: subject.ownerId, domain: subject.domain,
     })
   }
@@ -551,7 +558,7 @@ function relatedRecords(record: EntityRecord, source = ''): EntityRecord[] {
   if (source === 'warehouse-locations') return visibleRecords('warehouse-locations').filter((item) => item.warehouseId === record.id)
   if (source === 'approval-center-steps') return visibleRecords('approval-steps').filter((item) => item.instanceId === record.id).sort((left, right) => Number(left.sequence) - Number(right.sequence))
   if (source === 'billing-items') return visibleRecords('billing-items').filter((item) => item.paymentId === record.id || item.subjectId === record.id)
-  if (source === 'payment-transactions') return visibleRecords('payment-transactions').filter((item) => item.paymentId === record.id).sort((left, right) => String(right.paidAt || '').localeCompare(String(left.paidAt || '')))
+  if (source === 'payment-transactions') return visibleRecords('payment-transactions').filter((item) => item.paymentId === record.id || item.parentPaymentId === record.id).sort((left, right) => Number(right.installmentNo || 0) - Number(left.installmentNo || 0) || String(right.paidAt || '').localeCompare(String(left.paidAt || '')))
   if (source === 'device-service' || source === 'project-service') return serviceRecords(record)
   if (source === 'dealer-devices') return visibleRecords('devices').filter((item) => item.ownerId === record.organizationId || item.ownerId === record.ownerId)
   if (source === 'dealer-service') return ['repairs', 'messages', 'complaints', 'materials', 'sn-replacement', 'service-transfer', 'issuance'].flatMap((key) => visibleRecords(key)).filter((item) => item.ownerId === record.organizationId || item.ownerId === record.ownerId || item.dealerId === record.organizationId || item.dealerId === record.ownerId || item.sourceDealerId === record.organizationId || item.sourceDealerId === record.ownerId || item.targetDealerId === record.organizationId || item.targetDealerId === record.ownerId)
@@ -2144,8 +2151,9 @@ export const mockService = {
           amount: total, orderAmount: total, paidAmount: 0, remainingAmount: total, paymentCount: 0, currency: 'CNY', account: record.account || record.owner, paidAt,
           paymentReference: '', paymentInstruction: '扫描订单对应的供应商收款二维码，付款后上传截图；金额与订单由财务人工核实。', expenseRecordId: expense.id, subjectId: record.id,
           subjectCode: record.code, subjectModule: 'repairs', recordedBy: auth.session!.displayName,
-          status: orderStatus, owner: record.owner, ownerId: record.ownerId, domain: record.domain,
+          orderRole: 'parent', status: orderStatus, owner: record.owner, ownerId: record.ownerId, domain: record.domain,
         })
+        database.update('payments', createdPayment.id, { parentOrderCode: createdPayment.code })
         const items = [
           { feeType: '人工费', itemName: '维修人工服务', quantity: laborHours, unitPrice: laborUnitPrice, subtotal: laborSubtotal },
           ...(materialAmount > 0 ? [{ feeType: '物料费', itemName: '维修物料', quantity: 1, unitPrice: materialAmount, subtotal: materialAmount }] : []),
@@ -2369,19 +2377,33 @@ export const mockService = {
       const paidAmount = Math.round((previousPaidAmount + installmentAmount) * 100) / 100
       const remainingAmount = Math.max(0, Math.round((orderAmount - paidAmount) * 100) / 100)
       const status = remainingAmount <= 0.01 ? 'verified' : 'pending'
+      const installmentNo = Number(record.paymentCount || 0) + 1
+      const parentOrderCode = String(record.parentOrderCode || record.code)
+      const childOrderCode = `${parentOrderCode}-P${String(installmentNo).padStart(2, '0')}`
+      const previousVerifiedChildOrderCodes = database.records('payment-transactions')
+        .filter((item) => item.paymentId === record.id && item.status === 'verified')
+        .sort((left, right) => Number(left.installmentNo || 0) - Number(right.installmentNo || 0))
+        .map((item) => String(item.childOrderCode || item.code))
+        .join('、')
+      const verifiedAt = new Date().toISOString()
       database.create('payment-transactions', {
-        code: `PAY-${Date.now().toString().slice(-12)}`, name: `${record.code}第 ${Number(record.paymentCount || 0) + 1} 笔付款核实`,
-        paymentId: record.id, subjectId: record.subjectId, subjectCode: record.subjectCode,
-        amount: installmentAmount, channel: '二维码支付', paymentReference: payload.paymentReference,
+        code: childOrderCode, childOrderCode, name: `${parentOrderCode}第 ${installmentNo} 笔付款`,
+        paymentId: record.id, parentPaymentId: record.id, parentOrderCode, installmentNo, installmentLabel: `第 ${installmentNo} 笔付款`,
+        previousVerifiedChildOrderCodes, subjectId: record.subjectId, subjectCode: record.subjectCode,
+        orderAmount, previousPaidAmount, amount: installmentAmount, currentPaymentAmount: installmentAmount,
+        paidAmountAfter: paidAmount, remainingAmountAfter: remainingAmount,
+        channel: '二维码支付', paymentReference: payload.paymentReference,
         paymentProof: payload.paymentProof, paidAt: payload.paidAt, verificationNote: payload.verificationNote,
-        verifiedAt: new Date().toISOString(), operator: auth.session!.displayName,
+        verifiedAt, verifiedBy: auth.session!.displayName, operator: auth.session!.displayName,
         status: 'verified', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
       })
       Object.assign(patch, {
-        orderAmount, paidAmount, remainingAmount, paymentCount: Number(record.paymentCount || 0) + 1,
+        orderRole: 'parent', parentOrderCode, lastChildOrderCode: childOrderCode,
+        childOrderCodes: [previousVerifiedChildOrderCodes, childOrderCode].filter(Boolean).join('、'),
+        orderAmount, paidAmount, remainingAmount, paymentCount: installmentNo,
         channel: '二维码支付', paymentReference: payload.paymentReference, paymentProof: payload.paymentProof,
         paidAt: payload.paidAt, verificationNote: payload.verificationNote,
-        verifiedAt: new Date().toISOString(), verifiedBy: auth.session!.displayName, status,
+        verifiedAt, verifiedBy: auth.session!.displayName, status,
       })
       database.notify(status === 'verified' ? '支付订单已全部核实' : '部分付款已核实，订单待继续支付', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 待付 ¥${remainingAmount.toLocaleString()}`, record)
     }
@@ -2395,20 +2417,33 @@ export const mockService = {
       if (database.records('payment-transactions').some((item) => item.paymentReference === payload.paymentReference)) return fail(409, '付款凭证/流水号已登记', null)
       const paidAmount = Math.round((previousPaidAmount + installmentAmount) * 100) / 100
       const remainingAmount = Math.max(0, Math.round((orderAmount - paidAmount) * 100) / 100)
-      const status = remainingAmount <= 0.01 ? 'paid' : 'partial'
+      const status = remainingAmount <= 0.01 ? 'verified' : 'pending'
+      const installmentNo = Number(record.paymentCount || 0) + 1
+      const parentOrderCode = String(record.parentOrderCode || record.code)
+      const childOrderCode = `${parentOrderCode}-P${String(installmentNo).padStart(2, '0')}`
+      const previousVerifiedChildOrderCodes = database.records('payment-transactions')
+        .filter((item) => item.paymentId === record.id && item.status === 'verified')
+        .sort((left, right) => Number(left.installmentNo || 0) - Number(right.installmentNo || 0))
+        .map((item) => String(item.childOrderCode || item.code))
+        .join('、')
       database.create('payment-transactions', {
-        code: `PAY-${Date.now().toString().slice(-12)}`, name: `${record.code}第 ${Number(record.paymentCount || 0) + 1} 笔付款`,
-        paymentId: record.id, subjectId: record.subjectId, subjectCode: record.subjectCode,
-        amount: installmentAmount, channel: payload.paymentMethod, paymentReference: payload.paymentReference,
-        paidAt: payload.paidAt, paymentNote: payload.paymentNote, operator: auth.session!.displayName,
-        status: 'paid', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
+        code: childOrderCode, childOrderCode, name: `${parentOrderCode}第 ${installmentNo} 笔付款`,
+        paymentId: record.id, parentPaymentId: record.id, parentOrderCode, installmentNo, installmentLabel: `第 ${installmentNo} 笔付款`,
+        previousVerifiedChildOrderCodes, subjectId: record.subjectId, subjectCode: record.subjectCode, orderAmount, previousPaidAmount,
+        amount: installmentAmount, currentPaymentAmount: installmentAmount, paidAmountAfter: paidAmount, remainingAmountAfter: remainingAmount,
+        channel: payload.paymentMethod, paymentReference: payload.paymentReference,
+        paidAt: payload.paidAt, paymentNote: payload.paymentNote, verifiedAt: new Date().toISOString(),
+        verifiedBy: auth.session!.displayName, operator: auth.session!.displayName,
+        status: 'verified', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
       })
       Object.assign(patch, {
-        orderAmount, paidAmount, remainingAmount, paymentCount: Number(record.paymentCount || 0) + 1,
+        orderRole: 'parent', parentOrderCode, lastChildOrderCode: childOrderCode,
+        childOrderCodes: [previousVerifiedChildOrderCodes, childOrderCode].filter(Boolean).join('、'),
+        orderAmount, paidAmount, remainingAmount, paymentCount: installmentNo,
         channel: payload.paymentMethod, paymentReference: payload.paymentReference, paidAt: payload.paidAt,
         paymentNote: payload.paymentNote, status,
       })
-      database.notify(status === 'paid' ? '支付订单已付清' : '支付订单收到部分付款', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 待付 ¥${remainingAmount.toLocaleString()}`, record)
+      database.notify(status === 'verified' ? '支付订单已付清' : '支付订单收到部分付款', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 待付 ¥${remainingAmount.toLocaleString()}`, record)
     }
     if (actionKey === 'resolve' && moduleKey === 'cross-region-activations') {
       Object.assign(patch, {

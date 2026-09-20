@@ -25,14 +25,37 @@ describe('business workflow closure', () => {
       paidAmount: firstAmount, paymentProof: 'data:image/png;base64,AA==', paymentReference: 'PARTIAL-PAY-001', paidAt: '2026-09-16', verificationNote: '首笔付款核实通过',
     })
     expect(first.code, first.msg).toBe(200)
-    expect(first.data).toMatchObject({ status: 'pending', channel: '二维码支付', paidAmount: firstAmount, paymentCount: 1 })
+    expect(first.data).toMatchObject({
+      orderRole: 'parent', parentOrderCode: order.code, lastChildOrderCode: `${order.code}-P01`,
+      status: 'pending', channel: '二维码支付', paidAmount: firstAmount, remainingAmount: 300, paymentCount: 1,
+    })
+    const firstChild = database.records('payment-transactions').find((item) => item.paymentId === order.id)
+    expect(firstChild).toMatchObject({
+      code: `${order.code}-P01`, childOrderCode: `${order.code}-P01`, parentOrderCode: order.code,
+      parentPaymentId: order.id, installmentNo: 1, installmentLabel: '第 1 笔付款', orderAmount,
+      previousPaidAmount: 0, currentPaymentAmount: firstAmount, paidAmountAfter: firstAmount,
+      remainingAmountAfter: 300, status: 'verified', paymentReference: 'PARTIAL-PAY-001',
+    })
 
     const second = await mockService.action('payments', order.id, 'finance-verify', {
       paidAmount: orderAmount - firstAmount, paymentProof: 'data:image/png;base64,BB==', paymentReference: 'PARTIAL-PAY-002', paidAt: '2026-09-17', verificationNote: '尾款核实通过',
     })
     expect(second.code, second.msg).toBe(200)
-    expect(second.data).toMatchObject({ status: 'verified', paidAmount: orderAmount, remainingAmount: 0, paymentCount: 2 })
-    expect(database.records('payment-transactions').filter((item) => item.paymentId === order.id)).toHaveLength(2)
+    expect(second.data).toMatchObject({
+      orderRole: 'parent', parentOrderCode: order.code, lastChildOrderCode: `${order.code}-P02`,
+      status: 'verified', paidAmount: orderAmount, remainingAmount: 0, paymentCount: 2,
+    })
+    const children = database.records('payment-transactions')
+      .filter((item) => item.paymentId === order.id)
+      .sort((left, right) => Number(left.installmentNo) - Number(right.installmentNo))
+    expect(children).toHaveLength(2)
+    expect(children[1]).toMatchObject({
+      code: `${order.code}-P02`, childOrderCode: `${order.code}-P02`, parentOrderCode: order.code,
+      parentPaymentId: order.id, installmentNo: 2, installmentLabel: '第 2 笔付款', orderAmount,
+      previousPaidAmount: firstAmount, currentPaymentAmount: orderAmount - firstAmount,
+      paidAmountAfter: orderAmount, remainingAmountAfter: 0, status: 'verified',
+      previousVerifiedChildOrderCodes: `${order.code}-P01`, paymentReference: 'PARTIAL-PAY-002',
+    })
   })
 
   it('lets finance explicitly release a partially paid procurement order', async () => {

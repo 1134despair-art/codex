@@ -72,7 +72,7 @@ const actionLabels: Record<string, string> = {
   'reset-password': '重置默认密码', assign: '分配处理', reply: '回复用户', forward: '转发经销商', complete: '标记完成', approve: '审批通过',
   reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'confirm-outbound': '确认出库', 'reject-outbound': '驳回出库', 'record-expense': '财务确认', 'record-bill': '登记维修账单', publish: '发布/撤回', process: '调货审批', test: '测试查询', permissions: '配置权限', escalate: '转单到总部',
   'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
-  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '财务核实', 'record-payment': '登记付款', resolve: '处理异常',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '核实本期付款', 'record-payment': '登记付款', resolve: '处理异常',
 }
 
 const prototypeLabels: Record<string, string> = {
@@ -134,7 +134,7 @@ const permissionActionLabels: Record<string, string> = {
   assign: '分配处理', reply: '回复用户', forward: '转发经销商', escalate: '转单到总部', complete: '标记完成',
   approve: '业务确认通过', reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'record-expense': '财务确认', process: '流程处理',
   'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
-  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '财务核实', 'record-payment': '登记付款', resolve: '处理异常',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '核实本期付款', 'record-payment': '登记付款', resolve: '处理异常',
   publish: '发布/撤回', test: '测试查询', permissions: '配置权限', 'remote-disable': '远程禁用', 'remote-enable': '远程启用',
   unbind: '强制解绑', 'change-region': '修改销售地区',
   export: '导出数据',
@@ -760,7 +760,7 @@ function rowActionLabel(action: string, record: EntityRecord) {
 function statusMeta(value: unknown) {
   if (props.moduleKey === 'payments') {
     const paymentStatuses: Record<string, { label: string; tone: string }> = {
-      pending: { label: '待支付', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已核实', tone: 'success' },
+      pending: { label: '待付款/继续付款', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已付清', tone: 'success' },
     }
     if (paymentStatuses[String(value)]) return paymentStatuses[String(value)]
   }

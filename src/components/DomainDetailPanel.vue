@@ -38,6 +38,16 @@ const labels: Record<string, string> = {
   code: '业务编号', name: '名称', account: '账号', category: '类型', region: '销售地区', owner: '归属方', status: '状态', createdAt: '创建时间', updatedAt: '更新时间', summary: '说明', deviceSN: '设备 SN', deviceName: '设备名称', deviceModel: '设备型号', deviceType: '设备类型', country: '销售国家', activation: '激活状态', activationDate: '激活日期', firmware: '固件版本', bindingStatus: '绑定状态', boundAt: '绑定时间', lastUsedRegion: '最近一次使用地区（用户授权上报）', lastUsedAt: '最近使用时间', salesRegion: '销售/归属区域', usedRegion: '发生/使用区域', occurredAt: '发生时间', exceptionType: '异常类型', locationSource: '地区信息来源', shipOwner: '船东姓名', usageRegion: '使用地区', warrantyUntil: '质保到期日', warrantyStartDate: '质保起算日', productType: '产品类型', dealer: '经销商', laborMonths: '免人工费时间', materialMonths: '物料质保时间', content: '内容', contact: '联系方式', faultCategory: '故障分类', assignee: '处理人', result: '处理结果', materialName: '物料名称', itemName: '申请内容', quantity: '数量', estimatedUnitPrice: '预算单价', actualUnitPrice: '成交单价', warrantyResult: '质保校验结果', paymentStatus: '付款状态', paymentMethod: '付款方式', paymentReference: '付款凭证/流水号', paymentNote: '费用备注', courier: '快递公司', trackingNo: '物流单号', originalSN: '原设备 SN', originalDeviceName: '原设备名称', originalDeviceModel: '原设备型号', originalDeviceType: '原设备类型', newSN: '新设备 SN', replacementDeviceName: '新设备名称', replacementDeviceModel: '新设备型号', replacementDeviceType: '新设备类型', sourceDealer: '原代理商', targetDealer: '目标代理商', channel: '支付/通知渠道', amount: '金额', orderAmount: '应付金额', paidAmount: '累计已付金额', remainingAmount: '待付金额', paymentCount: '付款次数', paidAt: '付款日期', role: '角色', dataScope: '数据范围', operationType: '操作类型', ip: '来源 IP', deviceInfo: '设备信息', levels: '审核层级', members: '审核人员', recipient: '发放对象', issuedAt: '发放时间', receivedAt: '收货时间', replacedAt: '更换时间', forceUpdate: '强制更新', releaseAt: '发布时间', applicableProductNames: '适用产品', applicableDeviceTypes: '适用设备类型', applicableDeviceModels: '适用设备型号', targetKey: '跳转标识', targetLabel: '跳转目标', audienceLabel: '适用用户', legacyTarget: '历史跳转值', sort: '排序', phone: '联系电话', email: '联系邮箱', parentDealer: '上级经销商', tier: '经销商层级', deviceCount: '绑定/管理设备数', lastActive: '最近活跃', applyTime: '申请时间', warehouseLocation: '库位',
 }
 Object.assign(labels, {
+  parentOrderCode: '母订单号',
+  childOrderCode: '子付款单号',
+  installmentNo: '付款期次',
+  installmentLabel: '付款期次',
+  previousPaidAmount: '付款前累计已付',
+  currentPaymentAmount: '本次付款',
+  paidAmountAfter: '付款后累计已付',
+  remainingAmountAfter: '剩余待付',
+  lastChildOrderCode: '最近子付款单号',
+  previousVerifiedChildOrderCodes: '此前已核实子单',
   hasFee: '是否涉及费用',
   estimatedFee: '预估费用',
   actualFee: '实际费用',
@@ -106,7 +116,7 @@ function isImageValue(value: unknown) {
 function displayField(field: string, value: unknown) {
   if (isStatusField(field)) return statusMeta(value).label
   if (field === 'account' && ['users', 'complaints'].includes(props.moduleKey)) return maskAccount(value)
-  if (['amount', 'orderAmount', 'paidAmount', 'remainingAmount', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee'].includes(field) && Number.isFinite(Number(value))) return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (['amount', 'orderAmount', 'paidAmount', 'remainingAmount', 'previousPaidAmount', 'currentPaymentAmount', 'paidAmountAfter', 'remainingAmountAfter', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee'].includes(field) && Number.isFinite(Number(value))) return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (/(At|Date|Until)$/.test(field) && typeof value === 'string') return value.replace('T', ' ').replace('.000Z', '').slice(0, 19)
   return display(value)
 }
@@ -124,7 +134,7 @@ function maskAccount(value: unknown) {
 function statusMeta(value: unknown) {
   if (props.moduleKey === 'payments') {
     const paymentStatuses: Record<string, { label: string; tone: string }> = {
-      pending: { label: '待支付', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已核实', tone: 'success' },
+      pending: { label: '待付款/继续付款', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已付清', tone: 'success' },
     }
     if (paymentStatuses[String(value)]) return paymentStatuses[String(value)]
   }

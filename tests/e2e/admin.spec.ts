@@ -50,6 +50,76 @@ async function visibleMenuRoutes(page: Page) {
   return page.locator('.nav-item').evaluateAll((links) => links.map((link) => String((link as HTMLAnchorElement).hash).replace(/^#\//, '')))
 }
 
+test('payment bill creates P01 and P02 child bills and updates the parent summary', async ({ page }) => {
+  await login(page)
+  const parentOrderCode = `PO-E2E-${Date.now()}`
+  await page.evaluate((code) => {
+    const storageKey = 'shark-sister-admin.db.v15'
+    const database = JSON.parse(localStorage.getItem(storageKey) || '{}')
+    database.records ||= {}
+    database.records.payments ||= []
+    database.records.payments.push({
+      id: `payment-${code}`, code, name: '端到端分次付款账单', category: '二维码支付',
+      sourceType: 'app', sourceLabel: 'APP 支付', businessType: '产品采购', channel: '二维码支付',
+      orderAmount: 1000, amount: 1000, paidAmount: 0, remainingAmount: 1000, paymentCount: 0,
+      account: '测试经销商', status: 'pending', owner: '平台中心', ownerId: 'platform', domain: 'cn',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    })
+    localStorage.setItem(storageKey, JSON.stringify(database))
+  }, parentOrderCode)
+
+  await page.reload()
+  await page.getByRole('link', { name: '支付账单', exact: true }).click()
+  await expect(page).toHaveURL(/#\/payments/)
+  await expect(page.getByRole('heading', { name: '支付账单' })).toBeVisible()
+  await expect(page.getByRole('columnheader', { name: '母订单号' })).toBeVisible()
+  let row = page.locator('.business-table .el-table__body tr', { hasText: parentOrderCode }).first()
+  await expect(row).toContainText('1,000')
+
+  await row.getByRole('button', { name: '核实本期付款' }).click()
+  let risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '本次核实金额' }).getByRole('spinbutton').fill('400')
+  await risk.locator('.el-form-item', { hasText: '付款截图' }).locator('input[type="file"]').setInputFiles('src/assets/illustrations/empty-no-results.png')
+  await risk.getByPlaceholder('请输入支付凭证号').fill(`${parentOrderCode}-REF01`)
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').fill('2026-09-20')
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').press('Enter')
+  await risk.locator('.el-form-item', { hasText: '财务核实说明' }).locator('textarea').fill('第一笔付款核实通过')
+  await risk.getByRole('button', { name: '确认核实本期付款' }).click()
+  row = page.locator('.business-table .el-table__body tr', { hasText: parentOrderCode }).first()
+  await expect(row).toContainText(`${parentOrderCode}-P01`)
+  await expect(row).toContainText('600')
+  await expect(row).toContainText('待付款/继续付款')
+
+  await row.getByRole('button', { name: '核实本期付款' }).click()
+  risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '本次核实金额' }).getByRole('spinbutton').fill('600')
+  await risk.locator('.el-form-item', { hasText: '付款截图' }).locator('input[type="file"]').setInputFiles('src/assets/illustrations/empty-no-results.png')
+  await risk.getByPlaceholder('请输入支付凭证号').fill(`${parentOrderCode}-REF02`)
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').fill('2026-09-21')
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').press('Enter')
+  await risk.locator('.el-form-item', { hasText: '财务核实说明' }).locator('textarea').fill('第二笔付款核实通过')
+  await risk.getByRole('button', { name: '确认核实本期付款' }).click()
+  row = page.locator('.business-table .el-table__body tr', { hasText: parentOrderCode }).first()
+  await expect(row).toContainText(`${parentOrderCode}-P02`)
+  await expect(row).toContainText('已付清')
+
+  await row.getByRole('button', { name: '查看详情', exact: true }).click()
+  const detail = page.locator('.detail-dialog')
+  await detail.getByRole('tab', { name: '子付款单' }).click()
+  await expect(detail).toContainText(`${parentOrderCode}-P01`)
+  await expect(detail).toContainText(`${parentOrderCode}-P02`)
+  const childBills = await page.evaluate((code) => {
+    const database = JSON.parse(localStorage.getItem('shark-sister-admin.db.v15') || '{}')
+    return (database.records?.['payment-transactions'] || [])
+      .filter((item: Record<string, unknown>) => item.parentOrderCode === code)
+      .sort((left: Record<string, unknown>, right: Record<string, unknown>) => Number(left.installmentNo) - Number(right.installmentNo))
+  }, parentOrderCode)
+  expect(childBills).toMatchObject([
+    { childOrderCode: `${parentOrderCode}-P01`, installmentNo: 1, previousPaidAmount: 0, currentPaymentAmount: 400, paidAmountAfter: 400, remainingAmountAfter: 600, status: 'verified' },
+    { childOrderCode: `${parentOrderCode}-P02`, installmentNo: 2, previousPaidAmount: 400, currentPaymentAmount: 600, paidAmountAfter: 1000, remainingAmountAfter: 0, status: 'verified' },
+  ])
+})
+
 test('platform launch screen settings persist, export JSON and reject dealer access', async ({ page }, testInfo) => {
   await login(page)
   await page.goto('/#/launch-settings')
@@ -238,7 +308,7 @@ test('headquarters initiates a fee-bearing after-sales transfer through target c
   await expect(billRow).toContainText('3,500')
   await billRow.getByRole('button', { name: '查看详情', exact: true }).click()
   const billDetail = page.locator('.detail-dialog')
-  await billDetail.getByRole('tab', { name: '付款核实记录' }).click()
+  await billDetail.getByRole('tab', { name: '子付款单' }).click()
   await expect(billDetail).toContainText('E2E-TRF-OFFLINE-001')
 })
 
@@ -468,7 +538,7 @@ test('all 35 demo menus, tabs and available details are reachable', async ({ pag
     ['messages', '客服留言'], ['complaints', '投诉管理'], ['materials', '物料采购'],
     ['issuance', '物料发放记录'], ['approval-center', '审批中心'], ['couriers', '物流配置'], ['sn-replacement', '换 SN 管理'],
     ['service-transfer', '售后转移'], ['warranty', '质保规则'], ['approval-flow', '审批流程'], ['after-sales-types', '售后类型配置'],
-    ['payments', '支付订单'], ['payment-settings', '支付配置'], ['banners', 'Banner 管理'], ['faq-documents', '常见问题 PDF'], ['support-settings', '客服信息'],
+    ['payments', '支付账单'], ['payment-settings', '支付配置'], ['banners', 'Banner 管理'], ['faq-documents', '常见问题 PDF'], ['support-settings', '客服信息'],
     ['launch-settings', 'APP 启动页'], ['app-versions', '客户端版本'], ['admins', '管理员账号'], ['roles', '角色权限'], ['logs', '操作日志'],
   ] as const
   const errors: string[] = []
