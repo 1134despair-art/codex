@@ -70,9 +70,9 @@ const outboundForm = reactive({ targetDealerId: '', summary: '' })
 const actionLabels: Record<string, string> = {
   detail: '查看详情', edit: '编辑', delete: '删除', toggle: '禁用/启用', unbind: '强制解绑', 'remote-disable': '远程禁用', 'remote-enable': '远程启用', 'change-region': '修改销售地区',
   'reset-password': '重置默认密码', assign: '分配处理', reply: '回复用户', forward: '转发经销商', complete: '标记完成', approve: '审批通过',
-  reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'record-expense': '财务确认', 'record-bill': '登记维修账单', publish: '发布/撤回', process: '流程处理', test: '测试查询', permissions: '配置权限', escalate: '转单到总部',
+  reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'confirm-outbound': '确认出库', 'reject-outbound': '驳回出库', 'record-expense': '财务确认', 'record-bill': '登记维修账单', publish: '发布/撤回', process: '调货审批', test: '测试查询', permissions: '配置权限', escalate: '转单到总部',
   'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
-  'approve-original': '审批通过', 'reject-original': '审批拒绝',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '财务核实', 'record-payment': '登记付款', resolve: '处理异常',
 }
 
 const prototypeLabels: Record<string, string> = {
@@ -102,7 +102,7 @@ const canCreate = computed(() => {
   if (!activePrimaryLabel.value || !hasPermission(auth.permissions, `${props.moduleKey}:create`)) return false
   if (props.moduleKey === 'warehouse') return query.tab === 'transfer' ? auth.session?.role !== 'platform' : auth.session?.role === 'platform'
   if (props.moduleKey === 'dealers' && auth.session?.role === 'tier1' && query.tab === 'tier1') return false
-  if (['materials', 'sn-replacement', 'warranty'].includes(props.moduleKey)) return auth.session?.role !== 'platform'
+  if (['materials', 'product-purchase', 'sn-replacement', 'warranty'].includes(props.moduleKey)) return auth.session?.role !== 'platform'
   if (props.moduleKey === 'service-transfer') return ['platform', 'custom', 'tier1', 'tier2'].includes(String(auth.session?.role))
   return true
 })
@@ -114,13 +114,18 @@ const batchImportLabel = computed(() => isMaterialImport.value ? '批量导入�
 const drawerTabs = computed(() => config.value.detailTabs.filter((tab) => {
   if (props.moduleKey === 'service-transfer' && detailRecord.value && !detailRecord.value.hasFee) return tab.key !== 'expenses'
   if (props.moduleKey !== 'materials' || !detailRecord.value) return true
-  if (detailRecord.value.category === '设备采购') return tab.key !== 'logistics'
+  if (detailRecord.value.category === '设备采购') return true
   return tab.key !== 'expenses'
 }))
 const currentDetailTab = computed(() => drawerTabs.value.find((item) => item.key === detailTab.value) || drawerTabs.value[0])
 const currentAction = computed<ActionConfig | undefined>(() => moduleConfigs[riskTargetModule.value || props.moduleKey]?.actions?.find((item) => item.key === riskAction.value))
+const currentActionFields = computed(() => (currentAction.value?.fields || []).filter((field) => {
+  if (!field.visibleWhen) return true
+  const current = actionForm.value[field.visibleWhen.field]
+  return field.visibleWhen.values ? field.visibleWhen.values.includes(current as never) : current === field.visibleWhen.value
+}))
 const riskActionLabel = computed(() => {
-  if (riskRecord.value && ['toggle', 'publish'].includes(riskAction.value)) return rowActionLabel(riskAction.value, riskRecord.value)
+  if (riskRecord.value && ['toggle', 'publish', 'approve'].includes(riskAction.value)) return rowActionLabel(riskAction.value, riskRecord.value)
   return currentAction.value?.label || actionLabels[riskAction.value] || '确认操作'
 })
 const permissionTreeRef = ref<{ getCheckedKeys: () => unknown[]; setCheckedKeys: (keys: unknown[]) => void }>()
@@ -129,7 +134,7 @@ const permissionActionLabels: Record<string, string> = {
   assign: '分配处理', reply: '回复用户', forward: '转发经销商', escalate: '转单到总部', complete: '标记完成',
   approve: '业务确认通过', reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'record-expense': '财务确认', process: '流程处理',
   'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
-  'approve-original': '审批通过', 'reject-original': '审批拒绝',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'confirm-purchase-receipt': '确认采购收货', 'start-production': '导入生产', 'finance-verify': '财务核实', 'record-payment': '登记付款', resolve: '处理异常',
   publish: '发布/撤回', test: '测试查询', permissions: '配置权限', 'remote-disable': '远程禁用', 'remote-enable': '远程启用',
   unbind: '强制解绑', 'change-region': '修改销售地区',
   export: '导出数据',
@@ -429,10 +434,8 @@ async function refreshDerivedFields(changedField = '') {
   }
   if (['projects', 'warehouse'].includes(props.moduleKey) && changedField === 'deviceModel') {
     editorForm.value.deviceSN = ''
-    if (props.moduleKey === 'projects') {
-      editorForm.value.deviceName = ''
-      editorForm.value.specification = ''
-    }
+    editorForm.value.deviceName = ''
+    editorForm.value.specification = ''
   }
   const response = await mockService.resolveFields(props.moduleKey, editorForm.value)
   editorForm.value = { ...response.data }
@@ -517,7 +520,7 @@ function overflowRowActions(record: EntityRecord) {
 
 async function confirmRisk() {
   if (!riskRecord.value) return
-  const requiredField = currentAction.value?.fields?.find((field) => {
+  const requiredField = currentActionFields.value.find((field) => {
     if (!field.required) return false
     const value = actionForm.value[field.field]
     return Array.isArray(value) ? value.length === 0 : !String(value ?? '').trim()
@@ -567,6 +570,29 @@ async function onBannerFile(upload: UploadFile) {
     ElMessage.success('图片已裁切压缩为 1200 × 400')
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '图片处理失败')
+  }
+}
+
+async function onActionImageFile(upload: UploadFile, field: string) {
+  if (!upload.raw) return
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(upload.raw.type)) {
+    ElMessage.error('凭证图片仅支持 PNG、JPG 或 WebP')
+    return
+  }
+  if (upload.raw.size > 2 * 1024 * 1024) {
+    ElMessage.error('凭证图片不能超过 2 MB')
+    return
+  }
+  try {
+    actionForm.value[field] = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result || ''))
+      reader.onerror = () => reject(new Error('图片读取失败'))
+      reader.readAsDataURL(upload.raw!)
+    })
+    ElMessage.success('图片已添加')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '图片读取失败')
   }
 }
 
@@ -724,10 +750,20 @@ function displayColumn(column: ColumnConfig, record: EntityRecord) {
 function rowActionLabel(action: string, record: EntityRecord) {
   if (action === 'toggle') return record.status === 'disabled' ? '启用' : '禁用'
   if (action === 'publish') return record.status === 'published' ? '撤回' : '发布'
-  return actionLabels[action] || action
+  if (action === 'approve' && ['materials', 'product-purchase'].includes(props.moduleKey) && record.category === '设备采购') {
+    return record.purchaseStage === 'rd_confirmation' ? '研发确认' : '销售确认'
+  }
+  if (action === 'approve') return actionLabels[action] || action
+  return config.value.actions?.find((item) => item.key === action)?.label || actionLabels[action] || action
 }
 
 function statusMeta(value: unknown) {
+  if (props.moduleKey === 'payments') {
+    const paymentStatuses: Record<string, { label: string; tone: string }> = {
+      pending: { label: '待支付', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已核实', tone: 'success' },
+    }
+    if (paymentStatuses[String(value)]) return paymentStatuses[String(value)]
+  }
   const base = statusLabels[String(value)] || { label: displayValue(value), tone: 'neutral' }
   return { ...base, tone: config.value.statusTones?.[String(value)] || base.tone }
 }
@@ -852,10 +888,10 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
         <el-table-column v-if="activeRowActions.length || hasRelatedLinks" label="操作" fixed="right" :width="operationColumnWidth">
           <template #default="scope">
             <div class="row-actions">
-              <el-button v-for="action in inlineRowActions(scope.row)" :key="action" link :type="['delete', 'remote-disable', 'unbind', 'reject', 'reject-transfer-fee', 'escalate'].includes(action) ? 'danger' : 'primary'" @click="runRowAction(action, scope.row)">{{ rowActionLabel(action, scope.row) }}</el-button>
+              <el-button v-for="action in inlineRowActions(scope.row)" :key="action" link :type="['delete', 'remote-disable', 'unbind', 'reject', 'reject-outbound', 'reject-transfer-fee', 'escalate'].includes(action) ? 'danger' : 'primary'" @click="runRowAction(action, scope.row)">{{ rowActionLabel(action, scope.row) }}</el-button>
               <el-dropdown v-if="overflowRowActions(scope.row).length" trigger="click" @command="(action: string) => runRowAction(action, scope.row)">
                 <el-button link type="primary" class="related-menu-trigger">更多操作<AppIcon name="chevron-down" :size="14" /></el-button>
-                <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in overflowRowActions(scope.row)" :key="action" :command="action" :class="{ 'danger-menu-item': ['delete', 'remote-disable', 'unbind', 'reject', 'reject-transfer-fee', 'escalate'].includes(action) }">{{ rowActionLabel(action, scope.row) }}</el-dropdown-item></el-dropdown-menu></template>
+                <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in overflowRowActions(scope.row)" :key="action" :command="action" :class="{ 'danger-menu-item': ['delete', 'remote-disable', 'unbind', 'reject', 'reject-outbound', 'reject-transfer-fee', 'escalate'].includes(action) }">{{ rowActionLabel(action, scope.row) }}</el-dropdown-item></el-dropdown-menu></template>
               </el-dropdown>
               <el-button v-if="primaryRelated(scope.row)" link type="primary" class="related-primary-action" @click="navigateRelated(primaryRelated(scope.row)!, scope.row)">{{ primaryRelated(scope.row)!.label }}</el-button>
               <el-dropdown v-if="secondaryRelated(scope.row).length" trigger="click" @command="(key: string) => navigateRelatedByKey(scope.row, key)">
@@ -880,8 +916,8 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
           <el-input v-if="field.type === 'text'" v-model="editorForm[field.field]" :placeholder="field.placeholder || `请输入${field.label}`" :disabled="field.readonly" />
           <el-input v-else-if="field.type === 'password'" v-model="editorForm[field.field]" type="password" show-password :placeholder="`请输入${field.label}`" autocomplete="new-password" />
           <el-input v-else-if="field.type === 'textarea'" v-model="editorForm[field.field]" type="textarea" :rows="4" maxlength="300" show-word-limit />
-          <el-select v-else-if="field.type === 'select'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" placeholder="请选择" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
-          <el-select v-else-if="field.type === 'multiSelect'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" multiple collapse-tags collapse-tags-tooltip placeholder="请选择" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'select'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" :placeholder="field.placeholder || '请选择'" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'multiSelect'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" multiple collapse-tags collapse-tags-tooltip :placeholder="field.placeholder || '请选择'" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
           <div v-else-if="field.type === 'lineItems'" class="line-items-editor">
             <div v-for="(line, index) in purchaseLines(field)" :key="index" class="line-item-row"><el-select v-model="line.itemKey" filterable placeholder="选择设备或物料" @change="refreshDerivedFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select><el-input-number v-model="line.quantity" :min="1" controls-position="right" aria-label="数量" @change="refreshDerivedFields" /><el-input-number v-model="line.unitPrice" :min="0.01" :precision="2" controls-position="right" aria-label="参考单价" @change="refreshDerivedFields" /><el-button title="删除明细" :disabled="purchaseLines(field).length === 1" @click="removePurchaseLine(field, index)"><AppIcon name="trash-2" :size="16" /></el-button></div>
             <el-button @click="addPurchaseLine(field)"><AppIcon name="plus" :size="16" />添加采购明细</el-button>
@@ -934,7 +970,7 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
       <div class="impact-callout"><AppIcon name="triangle-alert" :size="22" /><div><strong>请确认影响范围</strong><p>{{ currentAction?.impact || `对象：${riskRecord?.name}（${riskRecord?.code}）。操作会同步更新关联数据和审计日志。` }}</p></div></div>
       <el-form label-position="top" class="action-form">
         <el-form-item v-if="riskAction === 'permissions'" label="菜单与操作权限" class="permission-action-field"><el-tree ref="permissionTreeRef" show-checkbox default-expand-all node-key="id" :data="permissionTree" /></el-form-item>
-        <el-form-item v-for="field in currentAction?.fields" :key="field.field" :label="field.label" :required="field.required">
+        <el-form-item v-for="field in currentActionFields" :key="field.field" :label="field.label" :required="field.required">
           <el-input v-if="field.type === 'text'" v-model="actionForm[field.field]" :placeholder="`请输入${field.label}`" />
           <el-input v-else-if="field.type === 'textarea'" v-model="actionForm[field.field]" type="textarea" :rows="3" :placeholder="`请输入${field.label}`" maxlength="300" show-word-limit />
           <el-select v-else-if="field.type === 'select'" v-model="actionForm[field.field]" :filterable="Boolean(field.optionSource)" placeholder="请选择" style="width: 100%"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
@@ -942,6 +978,9 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
           <el-input-number v-else-if="field.type === 'number'" v-model="actionForm[field.field]" :min="field.min || 0" :max="field.max" style="width: 100%" />
           <el-date-picker v-else-if="field.type === 'date'" v-model="actionForm[field.field]" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           <el-switch v-else-if="field.type === 'switch'" v-model="actionForm[field.field]" />
+          <el-upload v-else-if="field.type === 'image'" action="#" :auto-upload="false" :show-file-list="false" accept="image/png,image/jpeg,image/webp" :on-change="(upload: UploadFile) => onActionImageFile(upload, field.field)">
+            <div class="action-image-uploader"><img v-if="actionForm[field.field]" :src="String(actionForm[field.field])" :alt="`${field.label}预览`"><div v-else><AppIcon name="image-plus" :size="24" /><strong>选择{{ field.label }}</strong><small>PNG/JPG/WebP，最大 2 MB</small></div></div>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer><el-button @click="riskOpen = false">取消</el-button><el-button :type="currentAction?.tone === 'danger' ? 'danger' : 'primary'" :loading="saving" @click="confirmRisk">确认{{ riskActionLabel }}</el-button></template>

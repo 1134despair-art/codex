@@ -125,6 +125,7 @@ export interface TabConfig {
   label: string
   field?: string
   value?: string
+  values?: string[]
   source?: string
   excludeValues?: string[]
 }

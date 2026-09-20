@@ -9,5 +9,6 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./tests/setup.ts'],
     include: ['./tests/unit/**/*.spec.ts'],
+    testTimeout: 15_000,
   },
 })

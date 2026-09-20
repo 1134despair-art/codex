@@ -18,13 +18,24 @@ const tabTargetModules: Record<string, string> = {
   'ownership-history': 'warehouse', 'firmware-history': 'ota', 'project-warranty': 'warranty', 'logistics-records': 'issuance', 'role-permissions': 'roles',
 }
 const tabNavigation = computed(() => {
+  if (props.tab.source === 'warehouse-locations' && hasPermission(auth.permissions, 'warehouse-locations:view')) {
+    return {
+      key: `warehouse-locations-${props.record.id}`,
+      label: '管理库位',
+      icon: 'map-pin',
+      targetModule: 'warehouse-locations',
+      relationFilters: { warehouseId: props.record.id },
+      count: rows.value.length,
+      level: 'primary',
+    } satisfies RelatedNavigationItem
+  }
   const target = tabTargetModules[String(props.tab.source || '')]
   return target ? props.navigation.find((item) => item.targetModule === target) : undefined
 })
 
 const internalFields = new Set(['id', 'ownerId', 'dealerId', 'domain', 'subjectId', 'subjectCode', 'requestType', 'replacementDeviceDescriptor', 'initiatorAccountId', 'initiatorRole', 'productId', 'warehouseId', 'warehouseLocationId', 'currentApproverId', 'currentApproverAccountId'])
 const labels: Record<string, string> = {
-  code: '业务编号', name: '名称', account: '账号', category: '类型', region: '销售地区', owner: '归属方', status: '状态', createdAt: '创建时间', updatedAt: '更新时间', summary: '说明', deviceSN: '设备 SN', deviceName: '设备名称', deviceModel: '设备型号', deviceType: '设备类型', country: '销售国家', activation: '激活状态', activationDate: '激活日期', firmware: '固件版本', bindingStatus: '绑定状态', boundAt: '绑定时间', lastUsedRegion: '最近一次使用地区（用户授权上报）', lastUsedAt: '最近使用时间', salesRegion: '销售/归属区域', usedRegion: '发生/使用区域', occurredAt: '发生时间', exceptionType: '异常类型', locationSource: '地区信息来源', shipOwner: '船东姓名', usageRegion: '使用地区', warrantyUntil: '质保到期日', productType: '产品类型', dealer: '经销商', laborMonths: '免人工费时间', materialMonths: '物料质保时间', content: '内容', contact: '联系方式', faultCategory: '故障分类', assignee: '处理人', result: '处理结果', materialName: '物料名称', itemName: '申请内容', quantity: '数量', estimatedUnitPrice: '预算单价', actualUnitPrice: '成交单价', warrantyResult: '质保校验', paymentStatus: '费用登记', paymentMethod: '付款方式', paymentReference: '付款凭证/流水号', paymentNote: '费用备注', courier: '快递公司', trackingNo: '物流单号', originalSN: '原设备 SN', originalDeviceName: '原设备名称', originalDeviceModel: '原设备型号', originalDeviceType: '原设备类型', newSN: '新设备 SN', replacementDeviceName: '新设备名称', replacementDeviceModel: '新设备型号', replacementDeviceType: '新设备类型', sourceDealer: '原代理商', targetDealer: '目标代理商', channel: '支付/通知渠道', amount: '金额', paidAmount: '实付金额', paidAt: '付款日期', role: '角色', dataScope: '数据范围', operationType: '操作类型', ip: '来源 IP', deviceInfo: '设备信息', levels: '审核层级', members: '审核人员', recipient: '发放对象', issuedAt: '发放时间', replacedAt: '更换时间', forceUpdate: '强制更新', releaseAt: '发布时间', targetKey: '跳转标识', targetLabel: '跳转目标', audienceLabel: '适用用户', legacyTarget: '历史跳转值', sort: '排序', phone: '联系电话', email: '联系邮箱', parentDealer: '上级经销商', tier: '经销商层级', deviceCount: '绑定/管理设备数', lastActive: '最近活跃', applyTime: '申请时间', warehouseLocation: '库位',
+  code: '业务编号', name: '名称', account: '账号', category: '类型', region: '销售地区', owner: '归属方', status: '状态', createdAt: '创建时间', updatedAt: '更新时间', summary: '说明', deviceSN: '设备 SN', deviceName: '设备名称', deviceModel: '设备型号', deviceType: '设备类型', country: '销售国家', activation: '激活状态', activationDate: '激活日期', firmware: '固件版本', bindingStatus: '绑定状态', boundAt: '绑定时间', lastUsedRegion: '最近一次使用地区（用户授权上报）', lastUsedAt: '最近使用时间', salesRegion: '销售/归属区域', usedRegion: '发生/使用区域', occurredAt: '发生时间', exceptionType: '异常类型', locationSource: '地区信息来源', shipOwner: '船东姓名', usageRegion: '使用地区', warrantyUntil: '质保到期日', warrantyStartDate: '质保起算日', productType: '产品类型', dealer: '经销商', laborMonths: '免人工费时间', materialMonths: '物料质保时间', content: '内容', contact: '联系方式', faultCategory: '故障分类', assignee: '处理人', result: '处理结果', materialName: '物料名称', itemName: '申请内容', quantity: '数量', estimatedUnitPrice: '预算单价', actualUnitPrice: '成交单价', warrantyResult: '质保校验结果', paymentStatus: '付款状态', paymentMethod: '付款方式', paymentReference: '付款凭证/流水号', paymentNote: '费用备注', courier: '快递公司', trackingNo: '物流单号', originalSN: '原设备 SN', originalDeviceName: '原设备名称', originalDeviceModel: '原设备型号', originalDeviceType: '原设备类型', newSN: '新设备 SN', replacementDeviceName: '新设备名称', replacementDeviceModel: '新设备型号', replacementDeviceType: '新设备类型', sourceDealer: '原代理商', targetDealer: '目标代理商', channel: '支付/通知渠道', amount: '金额', orderAmount: '应付金额', paidAmount: '累计已付金额', remainingAmount: '待付金额', paymentCount: '付款次数', paidAt: '付款日期', role: '角色', dataScope: '数据范围', operationType: '操作类型', ip: '来源 IP', deviceInfo: '设备信息', levels: '审核层级', members: '审核人员', recipient: '发放对象', issuedAt: '发放时间', receivedAt: '收货时间', replacedAt: '更换时间', forceUpdate: '强制更新', releaseAt: '发布时间', applicableProductNames: '适用产品', applicableDeviceTypes: '适用设备类型', applicableDeviceModels: '适用设备型号', targetKey: '跳转标识', targetLabel: '跳转目标', audienceLabel: '适用用户', legacyTarget: '历史跳转值', sort: '排序', phone: '联系电话', email: '联系邮箱', parentDealer: '上级经销商', tier: '经销商层级', deviceCount: '绑定/管理设备数', lastActive: '最近活跃', applyTime: '申请时间', warehouseLocation: '库位',
 }
 Object.assign(labels, {
   hasFee: '是否涉及费用',
@@ -49,6 +60,13 @@ Object.assign(labels, {
   deliveryStatus: '发货状态',
   deliveryMethod: '交付方式',
   deliveryReference: '物流/交付单号',
+  trackingNo: '物流单号',
+  shipmentPhoto: '发货照片',
+  receiptPhoto: '收货照片',
+  paymentProof: '付款截图',
+  productionBatchNo: '生产批次号',
+  productionAt: '导入生产时间',
+  warehouseDecisionLabel: '仓库处理决定',
   financeConfirmedBy: '财务确认人',
   financeConfirmedAt: '财务确认时间',
   businessConfirmedBy: '业务确认人',
@@ -74,17 +92,21 @@ function display(value: unknown) {
   if (value === true) return '是'
   if (value === false) return '否'
   if (value === null || value === undefined || value === '') return '-'
-  return String(value)
+  return Array.isArray(value) ? value.join('、') : String(value)
 }
 
 function isStatusField(field: string) {
   return ['status', 'activation', 'bindingStatus', 'warrantyResult'].includes(field)
 }
 
+function isImageValue(value: unknown) {
+  return typeof value === 'string' && value.startsWith('data:image/')
+}
+
 function displayField(field: string, value: unknown) {
   if (isStatusField(field)) return statusMeta(value).label
   if (field === 'account' && ['users', 'complaints'].includes(props.moduleKey)) return maskAccount(value)
-  if (['amount', 'paidAmount', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee'].includes(field) && Number.isFinite(Number(value))) return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (['amount', 'orderAmount', 'paidAmount', 'remainingAmount', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee'].includes(field) && Number.isFinite(Number(value))) return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (/(At|Date|Until)$/.test(field) && typeof value === 'string') return value.replace('T', ' ').replace('.000Z', '').slice(0, 19)
   return display(value)
 }
@@ -100,6 +122,12 @@ function maskAccount(value: unknown) {
 }
 
 function statusMeta(value: unknown) {
+  if (props.moduleKey === 'payments') {
+    const paymentStatuses: Record<string, { label: string; tone: string }> = {
+      pending: { label: '待支付', tone: 'warning' }, verifying: { label: '待财务核实', tone: 'warning' }, verified: { label: '已核实', tone: 'success' },
+    }
+    if (paymentStatuses[String(value)]) return paymentStatuses[String(value)]
+  }
   const base = statusLabels[String(value)] || { label: display(value), tone: 'neutral' }
   return { ...base, tone: moduleConfigs[props.moduleKey].statusTones?.[String(value)] || base.tone }
 }
@@ -130,6 +158,7 @@ watch(() => [props.record.id, props.tab.key], load, { immediate: true })
         <dt>{{ item.label }}</dt>
         <dd>
           <span v-if="isStatusField(item.field)" class="status-chip" :data-tone="statusMeta(item.value).tone"><i></i>{{ displayField(item.field, item.value) }}</span>
+          <img v-else-if="isImageValue(item.value)" class="detail-proof-image" :src="String(item.value)" :alt="item.label">
           <span v-else>{{ displayField(item.field, item.value) }}</span>
         </dd>
       </div>
@@ -144,6 +173,7 @@ watch(() => [props.record.id, props.tab.key], load, { immediate: true })
         <el-table-column v-for="column in tab.columns" :key="column.field" :prop="column.field" :label="column.label" :width="column.width" :min-width="column.minWidth" show-overflow-tooltip>
           <template #default="scope">
             <span v-if="column.type === 'status'" class="status-chip" :data-tone="statusMeta(scope.row[column.field]).tone"><i></i>{{ statusMeta(scope.row[column.field]).label }}</span>
+            <img v-else-if="column.type === 'image' && scope.row[column.field]" class="detail-table-image" :src="String(scope.row[column.field])" :alt="column.label">
             <code v-else-if="column.type === 'mono'" class="mono-cell">{{ display(scope.row[column.field]) }}</code>
             <span v-else-if="column.type === 'money'" class="money-cell">¥{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
             <span v-else-if="isDate(column)">{{ display(scope.row[column.field]).replace('T', ' ').slice(0, 19) }}</span>

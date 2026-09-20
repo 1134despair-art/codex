@@ -18,7 +18,7 @@ const executableTestIds = new Set([
   'UT-SERVICE-WORKFLOW', 'UT-MATERIAL-APPROVAL', 'UT-CONFIG-CRUD', 'UT-LOGISTICS-ISOLATION',
   'UT-SN-TRANSACTION', 'UT-SERVICE-TRANSFER', 'UT-STATIC-EXTERNAL-BOUNDARY', 'UT-READONLY-AUDIT',
   'E2E-APPROVAL-FLOW-CRUD', 'UT-MATERIAL-FULFILLMENT', 'E2E-BANNER-V32-LINK', 'E2E-ADMIN-LOGIN',
-  'UT-PERMISSION-TREE', 'UT-AUDIT-LOG', 'UT-WAYPOINT-PRIVACY',
+  'UT-PERMISSION-TREE', 'UT-AUDIT-LOG', 'UT-WAYPOINT-RELATION',
 ])
 
 describe('V3.2 final Excel requirement baseline', () => {
@@ -60,11 +60,11 @@ describe('V3.2 final Excel requirement baseline', () => {
     expect(requirementManifest.find((item) => item.excelRow === 203)).toMatchObject({ semanticModule: '投诉管理', route: '/complaints' })
   })
 
-  it('applies the confirmed meeting amendment that keeps waypoint coordinates out of the admin UI', () => {
+  it('applies the latest requirement to show server-saved waypoints by user relation', () => {
     expect(requirementManifest.find((item) => item.excelRow === 38)).toMatchObject({
-      pageLocation: '客户端航点保存策略（后台不可见）',
-      service: 'mockService.related（后台隐私拦截）',
-      testId: 'UT-WAYPOINT-PRIVACY',
+      pageLocation: '用户详情 / 航点数据 / 航点列表',
+      service: 'mockService.related（按 userId 查询服务器航点）',
+      testId: 'UT-WAYPOINT-RELATION',
       status: '通过',
     })
   })

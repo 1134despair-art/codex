@@ -1,6 +1,7 @@
 import { moduleConfigs } from '@/config/modules'
 import { deviceCatalog, deviceIdentity } from '@/config/device-catalog'
 import { actionPermission, hasActionPermission, hasPermission } from '@/config/permissions'
+import { dealerRegionOptions } from '@/config/region-catalog'
 import { useAuthStore } from '@/stores/auth'
 import { useDatabaseStore } from '@/stores/database'
 import { relatedNavigationCandidates } from '@/services/related-navigation'
@@ -25,6 +26,10 @@ const approvalMenuLabels: Record<string, string> = {
 const specialExportTitles: Record<string, string> = {
   'payment-settings': '支付配置',
   'launch-settings': 'APP 启动页配置',
+}
+
+function canonicalModuleKey(moduleKey: string) {
+  return ['purchase-shipping', 'product-purchase'].includes(moduleKey) ? 'materials' : moduleKey
 }
 
 function configuredApprovalIds(flow: EntityRecord | undefined) {
@@ -88,9 +93,17 @@ function isVisibleRecord(moduleKey: string, record: EntityRecord) {
 }
 
 function actionDecision(moduleKey: string, record: EntityRecord, actionKey: string) {
+  moduleKey = canonicalModuleKey(moduleKey)
   const auth = useAuthStore()
   const session = auth.session
   if (!session) return { allowed: false, reason: '登录状态已失效', code: 401 }
+  if (moduleKey === 'warehouse' && ['confirm-outbound', 'reject-outbound'].includes(actionKey)) {
+    if (!hasActionPermission(auth.permissions, moduleKey, 'process')) return { allowed: false, reason: '缺少权限：warehouse:process', code: 403 }
+    if (!isVisibleRecord(moduleKey, record)) return { allowed: false, reason: '记录不存在或超出当前数据范围', code: 403 }
+    if (record.category !== '出库') return { allowed: false, reason: '该固定操作仅适用于设备出库单', code: 409 }
+    if (!['pending', 'processing'].includes(String(record.status))) return { allowed: false, reason: '当前出库单已经处理', code: 409 }
+    return { allowed: true, reason: '', code: 200 }
+  }
   if (moduleKey === 'approval-center' && ['approve-original', 'reject-original'].includes(actionKey)) {
     if (record.status !== 'pending') return { allowed: false, reason: '当前审批不属于本账号或已经处理', code: 409 }
     const sourceModule = String(record.sourceModule || record.menuKey || '')
@@ -115,21 +128,44 @@ function actionDecision(moduleKey: string, record: EntityRecord, actionKey: stri
     return { allowed: Boolean(allowed), reason: allowed ? '' : '一级经销商只能解绑所属二级经销商设备', code: allowed ? 200 : 403 }
   }
   if (moduleKey === 'materials' && ['approve', 'reject'].includes(actionKey)) {
+    if (record.category === '设备采购' && !['sales_confirmation', 'rd_confirmation'].includes(String(record.purchaseStage))) return { allowed: false, reason: '当前采购单不在销售或研发确认节点', code: 409 }
     const allowed = record.currentApproverId === session.accountId
     return { allowed, reason: allowed ? '' : `当前审批人为${record.currentApproverName || '其他账号'}`, code: allowed ? 200 : 403 }
   }
   if (moduleKey === 'materials' && actionKey === 'ship' && record.category === '设备采购') return { allowed: false, reason: '设备采购不走物料发货流程', code: 409 }
   if (moduleKey === 'materials' && ['finance-confirm', 'record-expense'].includes(actionKey)) {
     if (record.category !== '设备采购') return { allowed: false, reason: '只有设备采购申请可以执行财务确认', code: 409 }
-    if (record.purchaseStage !== 'finance_confirmation') return { allowed: false, reason: '当前采购单未进入财务确认节点', code: 409 }
+    if (!['finance_confirmation', 'warehouse_fulfillment'].includes(String(record.purchaseStage))) return { allowed: false, reason: '当前采购单未进入财务核实或仓库处理节点', code: 409 }
     const allowed = ['platform', 'custom'].includes(session.role)
     return { allowed, reason: allowed ? '' : '财务确认只能由平台或总部人员操作', code: allowed ? 200 : 403 }
+  }
+  if (moduleKey === 'materials' && actionKey === 'start-production') {
+    if (record.category !== '设备采购' || record.purchaseStage !== 'production') return { allowed: false, reason: '当前采购单未进入导入生产节点', code: 409 }
+    const allowed = ['platform', 'custom'].includes(session.role)
+    return { allowed, reason: allowed ? '' : '导入生产只能由平台或总部人员操作', code: allowed ? 200 : 403 }
   }
   if (moduleKey === 'materials' && actionKey === 'purchase-ship') {
     if (record.category !== '设备采购') return { allowed: false, reason: '只有设备采购申请可以执行仓库发货', code: 409 }
     if (record.purchaseStage !== 'warehouse_fulfillment') return { allowed: false, reason: '当前采购单未进入仓库发货节点', code: 409 }
     const allowed = ['platform', 'custom'].includes(session.role)
     return { allowed, reason: allowed ? '' : '仓库发货只能由平台或总部人员操作', code: allowed ? 200 : 403 }
+  }
+  if (moduleKey === 'materials' && actionKey === 'confirm-purchase-receipt') {
+    if (record.category !== '设备采购' || record.purchaseStage !== 'shipped') return { allowed: false, reason: '当前采购单未进入待收货节点', code: 409 }
+    const allowed = ['platform', 'custom'].includes(session.role) || record.ownerId === session.ownerId
+    return { allowed, reason: allowed ? '' : '只有采购方或总部人员可以确认收货', code: allowed ? 200 : 403 }
+  }
+  if (moduleKey === 'payments' && ['record-payment', 'finance-verify'].includes(actionKey)) {
+    const allowed = ['platform', 'custom'].includes(session.role)
+    return { allowed, reason: allowed ? '' : '付款核实只能由平台或财务人员操作', code: allowed ? 200 : 403 }
+  }
+  if (moduleKey === 'cross-region-activations' && actionKey === 'resolve') {
+    const allowed = ['platform', 'custom'].includes(session.role)
+    return { allowed, reason: allowed ? '' : '跨区域异常只能由平台或总部人员处理', code: allowed ? 200 : 403 }
+  }
+  if (moduleKey === 'issuance' && actionKey === 'confirm-receipt') {
+    const allowed = ['platform', 'custom'].includes(session.role) || record.ownerId === session.ownerId
+    return { allowed, reason: allowed ? '' : '只有发放对象或总部人员可以确认收货', code: allowed ? 200 : 403 }
   }
   if (moduleKey === 'repairs' && actionKey === 'record-bill') {
     if (record.billingPaymentId) return { allowed: false, reason: '该报修单已经登记维修账单', code: 409 }
@@ -172,7 +208,7 @@ function actionDecision(moduleKey: string, record: EntityRecord, actionKey: stri
 function createDecision(moduleKey: string) {
   const auth = useAuthStore()
   if (!auth.session) return { allowed: false, reason: '登录状态已失效' }
-  const allowedModules = new Set(['dealers', 'projects', 'devices', 'product-catalog', 'warehouses', 'warehouse-locations', 'app-versions', 'warehouse', 'ota', 'materials', 'material-catalog', 'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'banners', 'faq-documents', 'support-settings', 'after-sales-types', 'admins'])
+  const allowedModules = new Set(['dealers', 'projects', 'devices', 'product-catalog', 'warehouses', 'warehouse-locations', 'app-versions', 'warehouse', 'ota', 'materials', 'product-purchase', 'material-catalog', 'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'banners', 'faq-documents', 'support-settings', 'after-sales-types', 'admins', 'payment-settings'])
   if (!allowedModules.has(moduleKey)) return { allowed: false, reason: 'V3.2 未定义该模块的新增操作' }
   const required = `${moduleKey}:create`
   return hasPermission(auth.permissions, required) ? { allowed: true, reason: '' } : { allowed: false, reason: `缺少权限：${required}` }
@@ -196,6 +232,11 @@ function configuredFields(moduleKey: string, payload: Partial<EntityRecord>) {
 
 function validateConfiguredFields(moduleKey: string, payload: Partial<EntityRecord>, creating: boolean) {
   for (const field of configuredFields(moduleKey, payload)) {
+    if (field.visibleWhen) {
+      const current = payload[field.visibleWhen.field]
+      const visible = field.visibleWhen.values ? field.visibleWhen.values.includes(current as never) : current === field.visibleWhen.value
+      if (!visible) continue
+    }
     if (!field.required && !(creating && field.requiredOnCreate)) continue
     const value = payload[field.field]
     const sensitiveValue = field.sensitive ? payload[`${field.field}Masked`] : undefined
@@ -264,7 +305,8 @@ function visibleRecords(moduleKey: string) {
   const database = useDatabaseStore()
   const session = useAuthStore().session
   if (!session) return []
-  let records = moduleKey === 'approval-center' ? approvalCenterRecords() : [...database.records(moduleKey)]
+  const sourceModuleKey = canonicalModuleKey(moduleKey)
+  let records = sourceModuleKey === 'approval-center' ? approvalCenterRecords() : [...database.records(sourceModuleKey)]
   if (moduleKey !== 'roles') records = records.filter((item) => item.domain === session.domain)
   const ids = organizationIds()
   if (ids && moduleKey !== 'roles') {
@@ -352,7 +394,7 @@ function forDisplay(moduleKey: string, record: EntityRecord) {
 
 function forExport(moduleKey: string, record: EntityRecord) {
   const exported = forDisplay(moduleKey, record)
-  for (const field of ['password', 'initialPassword', 'apiKey', 'apiKeyMasked', 'pdfData', 'image', 'permissions']) delete exported[field]
+  for (const field of ['password', 'initialPassword', 'apiKey', 'apiKeyMasked', 'pdfData', 'image', 'qrCodeData', 'paymentProof', 'shipmentPhoto', 'receiptPhoto', 'permissions']) delete exported[field]
   return exported
 }
 
@@ -361,12 +403,15 @@ function activeFilters(moduleKey: string, tabKey?: string) {
   return config?.tabFilters?.[String(tabKey || '')] || config?.filters || []
 }
 
-function filterRows(moduleKey: string, source: EntityRecord[], query: PageQuery, sourceKey = moduleKey) {
+function filterRows(moduleKey: string, source: EntityRecord[], query: PageQuery) {
   const config = moduleConfigs[moduleKey]
   let rows = source
-  if (query.tab && config && sourceKey === moduleKey) {
+  if (moduleKey === 'materials') rows = rows.filter((item) => item.category !== '设备采购')
+  if (['product-purchase', 'purchase-shipping'].includes(moduleKey)) rows = rows.filter((item) => item.category === '设备采购')
+  if (query.tab && config) {
     const tab = config.tabs.find((item) => item.key === query.tab)
     if (tab?.field && tab.value) rows = rows.filter((item) => String(item[tab.field!]) === tab.value)
+    if (tab?.field && tab.values?.length) rows = rows.filter((item) => tab.values!.includes(String(item[tab.field!])))
     if (tab?.field && tab.excludeValues?.length) rows = rows.filter((item) => !tab.excludeValues!.includes(String(item[tab.field!])))
   }
   if (query.status) rows = rows.filter((item) => item.status === query.status)
@@ -419,8 +464,13 @@ function recordPlatformBill(subject: EntityRecord, expense: EntityRecord, source
     sourceType: 'platform',
     sourceLabel: '平台费用登记',
     businessType: expense.category,
-    channel: expense.paymentMethod || '线下登记',
+    channel: '二维码支付',
+    paymentInstruction: '扫描订单对应的供应商收款二维码，付款后上传截图；金额与订单由财务人工核实。',
     amount: Number(expense.amount || 0),
+    orderAmount: Number(expense.amount || 0),
+    paidAmount: Number(expense.amount || 0),
+    remainingAmount: 0,
+    paymentCount: 1,
     currency: expense.currency || 'CNY',
     account: subject.dealer || subject.owner || '平台业务',
     paidAt: expense.paidAt || expense.createdAt,
@@ -430,13 +480,23 @@ function recordPlatformBill(subject: EntityRecord, expense: EntityRecord, source
     subjectCode: subject.code,
     subjectModule: sourceModule,
     recordedBy: expense.operator || useAuthStore().session?.displayName || '平台账单中心',
-    status: 'paid',
+    paymentProof: expense.paymentProof || '',
+    status: 'verified',
     owner: subject.owner,
     ownerId: subject.ownerId,
     domain: subject.domain,
   }
   const existing = database.records('payments').find((item) => item.expenseRecordId === expense.id)
   const payment = existing ? database.update('payments', existing.id, payload)! : database.create('payments', payload)
+  if (!database.records('payment-transactions').some((item) => item.paymentId === payment.id)) {
+    database.create('payment-transactions', {
+      code: `PAY-${Date.now().toString().slice(-12)}`, name: `${payment.name}付款记录`, paymentId: payment.id,
+      subjectId: subject.id, subjectCode: subject.code, amount: Number(expense.amount || 0),
+      channel: '二维码支付', paymentReference: expense.paymentReference || '', paymentProof: expense.paymentProof || '',
+      paidAt: expense.paidAt || expense.createdAt, operator: expense.operator || useAuthStore().session?.displayName || '平台账单中心',
+      status: 'verified', owner: subject.owner, ownerId: subject.ownerId, domain: subject.domain,
+    })
+  }
   database.records('billing-items').filter((item) => item.paymentId === payment.id).forEach((item) => database.remove('billing-items', item.id))
   const purchaseItems = sourceModule === 'materials'
     ? database.records('purchase-items').filter((item) => item.subjectId === subject.id)
@@ -472,7 +532,11 @@ function serviceRecords(record: EntityRecord) {
 
 function relatedRecords(record: EntityRecord, source = ''): EntityRecord[] {
   if (source === 'user-devices') return visibleRecords('devices').filter((item) => deviceMatchesUser(item, record))
-  if (source === 'waypoints') return []
+  if (source === 'waypoints') {
+    return visibleRecords('waypoints')
+      .filter((item) => item.userId === record.id && item.serverSaved === true && item.storageMode === 'server' && item.adminVisible !== false)
+      .sort((a, b) => String(b.recordedAt || b.createdAt).localeCompare(String(a.recordedAt || a.createdAt)))
+  }
   if (source === 'subject-logs' || source === 'logs') return subjectLogs(record)
   if (source === 'ownership-history') return visibleRecords('ownership-history').filter((item) => item.deviceId === record.id || item.deviceSN === record.code)
   if (source === 'device-components') return visibleRecords('device-components').filter((item) => item.deviceId === record.id || item.deviceSN === record.code)
@@ -487,6 +551,7 @@ function relatedRecords(record: EntityRecord, source = ''): EntityRecord[] {
   if (source === 'warehouse-locations') return visibleRecords('warehouse-locations').filter((item) => item.warehouseId === record.id)
   if (source === 'approval-center-steps') return visibleRecords('approval-steps').filter((item) => item.instanceId === record.id).sort((left, right) => Number(left.sequence) - Number(right.sequence))
   if (source === 'billing-items') return visibleRecords('billing-items').filter((item) => item.paymentId === record.id || item.subjectId === record.id)
+  if (source === 'payment-transactions') return visibleRecords('payment-transactions').filter((item) => item.paymentId === record.id).sort((left, right) => String(right.paidAt || '').localeCompare(String(left.paidAt || '')))
   if (source === 'device-service' || source === 'project-service') return serviceRecords(record)
   if (source === 'dealer-devices') return visibleRecords('devices').filter((item) => item.ownerId === record.organizationId || item.ownerId === record.ownerId)
   if (source === 'dealer-service') return ['repairs', 'messages', 'complaints', 'materials', 'sn-replacement', 'service-transfer', 'issuance'].flatMap((key) => visibleRecords(key)).filter((item) => item.ownerId === record.organizationId || item.ownerId === record.ownerId || item.dealerId === record.organizationId || item.dealerId === record.ownerId || item.sourceDealerId === record.organizationId || item.sourceDealerId === record.ownerId || item.targetDealerId === record.organizationId || item.targetDealerId === record.ownerId)
@@ -501,7 +566,7 @@ function relatedRecords(record: EntityRecord, source = ''): EntityRecord[] {
     const selected = Array.isArray(record.selectedDevices) ? record.selectedDevices.map(String) : String(record.deviceSN || '').split(/[、,]/).filter(Boolean)
     return visibleRecords('devices').filter((item) => selected.includes(item.code))
   }
-  if (source === 'ota-devices') return visibleRecords('devices').filter((item) => item.name === record.deviceType)
+  if (source === 'ota-devices') return visibleRecords('devices').filter((item) => otaMatchesDevice(record, item))
   if (source === 'workflow-events') return visibleRecords('workflow-events').filter((item) => item.subjectId === record.id)
   if (source === 'approval-steps') return visibleRecords('approval-steps').filter((item) => item.subjectId === record.id).sort((left, right) => Number(left.sequence) - Number(right.sequence))
   if (source === 'replies') return visibleRecords('replies').filter((item) => item.subjectId === record.id)
@@ -517,6 +582,23 @@ function option(label: unknown, value: unknown) {
 
 function uniqueOptions(items: Array<{ label: string; value: string }>) {
   return [...new Map(items.map((item) => [item.value, item])).values()]
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? [...new Set(value.map(String).map((item) => item.trim()).filter(Boolean))] : []
+}
+
+function otaMatchesDevice(firmware: EntityRecord, device: EntityRecord) {
+  const productNames = stringArray(firmware.applicableProductNames)
+  const deviceTypes = stringArray(firmware.applicableDeviceTypes)
+  const deviceModels = stringArray(firmware.applicableDeviceModels)
+  const identity = deviceIdentity(device.name)
+  const productName = String(device.deviceName || identity.deviceName)
+  const deviceType = String(device.deviceType || identity.deviceType)
+  const deviceModel = String(device.deviceModel || identity.deviceModel)
+  return (!productNames.length || productNames.includes(productName))
+    && (!deviceTypes.length || deviceTypes.includes(deviceType))
+    && (!deviceModels.length || deviceModels.includes(deviceModel))
 }
 
 function resolveDealer(value: unknown) {
@@ -624,26 +706,10 @@ function createAccount(record: EntityRecord, payload: Partial<EntityRecord>, sub
     lockedUntil: 0,
     subjectType,
     subjectId: record.id,
-    capabilities: subjectType === 'dealer' && record.linkedUserId ? ['user', 'dealer'] : [subjectType],
-    subjectLinks: subjectType === 'dealer' && record.linkedUserId
-      ? [{ subjectType: 'user', subjectId: record.linkedUserId }, { subjectType: 'dealer', subjectId: record.id }]
-      : [{ subjectType, subjectId: record.id }],
+    capabilities: [subjectType],
+    subjectLinks: [{ subjectType, subjectId: record.id }],
     status: record.status === 'disabled' ? 'disabled' : 'normal',
   })
-}
-
-function syncDealerUserIdentity(dealer: EntityRecord) {
-  if (!dealer.linkedUserId) return
-  const database = useDatabaseStore()
-  const user = database.records('users').find((item) => item.id === dealer.linkedUserId)
-  if (!user) throw new Error('关联普通用户不存在或已被删除')
-  const subjectLinks = [{ subjectType: 'user', subjectId: user.id }, { subjectType: 'dealer', subjectId: dealer.id }]
-  const capabilities = ['user', 'dealer']
-  const dealerLogin = database.records('auth-accounts').find((item) => item.subjectId === dealer.id || item.account === dealer.account)
-  const userLogin = database.records('user-auth-accounts').find((item) => item.subjectId === user.id || item.account === user.account)
-  if (dealerLogin) database.update('auth-accounts', dealerLogin.id, { linkedUserId: user.id, subjectLinks, capabilities })
-  if (userLogin) database.update('user-auth-accounts', userLogin.id, { linkedDealerId: dealer.id, subjectLinks, capabilities })
-  database.update('users', user.id, { linkedDealerId: dealer.id, identityCapabilities: capabilities })
 }
 
 function normalizeRegion(value: unknown) {
@@ -765,10 +831,9 @@ function deriveFields(moduleKey: string, payload: Partial<EntityRecord>) {
     const parent = resolveDealer(next.parentDealerId)
     next.parentDealer = parent?.name || ''
   }
-  if (moduleKey === 'dealers' && next.linkedUserId) {
-    const user = database.records('users').find((item) => item.id === next.linkedUserId)
-    next.linkedUserName = user?.name || ''
-    if (user) next.account = user.account
+  if (moduleKey === 'dealers') {
+    delete next.linkedUserId
+    delete next.linkedUserName
   }
   if (moduleKey === 'dealers' && next.tier === '一级') {
     next.parentDealerId = ''
@@ -815,8 +880,8 @@ function deriveFields(moduleKey: string, payload: Partial<EntityRecord>) {
       next.paymentStatus ||= '未登记'
       next.deviceSN = '-'
       next.warrantyResult = '不适用'
-      next.purchaseStage ||= 'business_confirmation'
-      next.purchaseStageLabel ||= '待业务确认'
+      next.purchaseStage ||= 'sales_confirmation'
+      next.purchaseStageLabel ||= '待销售确认'
       next.contractStatus ||= '待确认'
       next.deliveryStatus ||= '待处理'
       delete next.materialId
@@ -827,6 +892,10 @@ function deriveFields(moduleKey: string, payload: Partial<EntityRecord>) {
       next.unitPrice = Number(material.price || 0)
       next.amount = Math.round(Number(next.quantity || 0) * Number(material.price || 0) * 100) / 100
       next.currency = 'CNY'
+      const warranty = warrantyEvaluation(linkedDevice)
+      next.warrantyResult = warranty.result
+      next.warrantyStartDate = warranty.startDate
+      next.warrantyUntil = warranty.endDate
     }
     const session = useAuthStore().session
     const dealer = database.records('dealers').find((item) => String(item.organizationId || item.ownerId) === session?.ownerId)
@@ -850,7 +919,7 @@ function deriveFields(moduleKey: string, payload: Partial<EntityRecord>) {
       || database.records('warehouse-locations').find((item) => item.warehouseId === warehouse?.id && item.status === 'normal')
     if (next.deviceModel) {
       const identity = deviceIdentity(next.deviceModel)
-      next.deviceName = identity.deviceName
+      next.deviceName ||= identity.deviceName
       next.deviceType = identity.deviceType
       next.deviceModel = identity.deviceModel
       next.specification = identity.specification
@@ -934,8 +1003,22 @@ function deriveFields(moduleKey: string, payload: Partial<EntityRecord>) {
   if (moduleKey === 'couriers') next.category ||= '快递公司'
   if (moduleKey === 'ota') {
     next.category ||= '固件版本'
-    next.compatibleModel ||= deviceIdentity(next.deviceType).deviceModel
-    next.releaseScope ||= 'all'
+    const products = database.records('product-catalog').filter((item) => item.status === 'normal')
+    const legacy = products.find((item) => item.descriptor === next.deviceType || item.deviceModel === next.compatibleModel)
+    const requestedNames = stringArray(next.applicableProductNames).length ? stringArray(next.applicableProductNames) : legacy ? [String(legacy.name)] : []
+    const requestedTypes = stringArray(next.applicableDeviceTypes).length ? stringArray(next.applicableDeviceTypes) : legacy ? [String(legacy.deviceType)] : []
+    const requestedModels = stringArray(next.applicableDeviceModels).length ? stringArray(next.applicableDeviceModels) : legacy ? [String(legacy.deviceModel)] : []
+    next.applicableProductNames = requestedNames.filter((name) => products.some((item) => item.name === name))
+    next.applicableDeviceTypes = requestedTypes.filter((type) => products.some((item) => item.deviceType === type && stringArray(next.applicableProductNames).includes(String(item.name))))
+    next.applicableDeviceModels = requestedModels.filter((model) => products.some((item) => item.deviceModel === model
+      && stringArray(next.applicableProductNames).includes(String(item.name))
+      && stringArray(next.applicableDeviceTypes).includes(String(item.deviceType))))
+    next.applicableProductSummary = stringArray(next.applicableProductNames).join('、')
+    next.applicableTypeSummary = stringArray(next.applicableDeviceTypes).join('、')
+    next.applicableModelSummary = stringArray(next.applicableDeviceModels).join('、')
+    delete next.deviceType
+    delete next.compatibleModel
+    delete next.releaseScope
   }
   return next
 }
@@ -949,7 +1032,19 @@ function validatePayload(moduleKey: string, payload: Partial<EntityRecord>, crea
     if (session?.role === 'tier1' && String(parent.organizationId || parent.ownerId) !== session.ownerId) return '一级经销商只能在自身组织下新增二级经销商'
   }
   if (moduleKey === 'dealers' && useAuthStore().session?.role === 'tier1' && payload.tier !== '二级') return '一级经销商只能新增二级经销商'
-  if (moduleKey === 'dealers' && payload.linkedUserId && !database.records('users').some((item) => item.id === payload.linkedUserId)) return '请选择有效的普通用户账号'
+  if (moduleKey === 'dealers') {
+    const domain = String(payload.domain || useAuthStore().session?.domain || 'cn')
+    if (!dealerRegionOptions.some((item) => item.domain === domain && item.value === payload.region)) return '请选择区域字典中的有效负责地区'
+  }
+  if (moduleKey === 'ota') {
+    const names = stringArray(payload.applicableProductNames)
+    const types = stringArray(payload.applicableDeviceTypes)
+    const models = stringArray(payload.applicableDeviceModels)
+    const matching = database.records('product-catalog').filter((item) => item.status === 'normal'
+      && names.includes(String(item.name)) && types.includes(String(item.deviceType)) && models.includes(String(item.deviceModel)))
+    if (!matching.length) return '适用产品、设备类型和设备型号必须来自同一条产品与型号主数据'
+  }
+  if (moduleKey === 'materials' && payload.category !== '设备采购' && !database.records('devices').some((item) => item.code === payload.deviceSN)) return '请选择有效设备后再校验质保'
   if (moduleKey === 'devices' && !String(payload.country || payload.region || '').trim()) return '请填写销售地区'
   if (moduleKey === 'devices') {
     for (const field of ['communicationId', 'chipId', 'mainboardSerial', 'coreComponentSerials']) {
@@ -1201,6 +1296,7 @@ function createApproval(record: EntityRecord, menuKey: string, sourceModule: str
     if (record.hasFee) approvers.push(...configured.approvers.filter((item) => item.roleKey === 'platform'))
   }
   approvers = [...new Map(approvers.map((item) => [item.id, item])).values()]
+  if (menuKey === 'materials' && record.category === '设备采购' && approvers.length === 1) approvers.push(approvers[0])
   if (!approvers.length) throw new Error('当前业务没有可用的后续审批账号')
   const instance = database.create('approval-instances', {
     code: `APR-${record.code}`,
@@ -1220,7 +1316,7 @@ function createApproval(record: EntityRecord, menuKey: string, sourceModule: str
   })
   approvers.forEach((approver, index) => database.create('approval-steps', {
     code: `${instance.code}-${index + 1}`,
-    name: `第 ${index + 1} 级审批`,
+    name: menuKey === 'materials' && record.category === '设备采购' ? (index === 0 ? '销售确认' : '研发确认') : `第 ${index + 1} 级审批`,
     subjectId: record.id,
     subjectCode: record.code,
     instanceId: instance.id,
@@ -1324,18 +1420,25 @@ function advanceMaterialApproval(record: EntityRecord, decision: 'approve' | 're
   if (next) {
     database.update('approval-steps', next.id, { status: 'pending' })
     database.update('approval-instances', instance.id, { currentStep: next.sequence })
+    if (record.category === '设备采购') {
+      return {
+        status: 'pending', purchaseStage: 'rd_confirmation', purchaseStageLabel: '待研发确认',
+        salesConfirmedAt: timestamp, salesConfirmedBy: auth.session?.displayName || '',
+        currentApproverId: next.approverAccountId, currentApproverName: next.approverName, approvalReason: reason,
+      }
+    }
     return { status: 'pending', currentApproverId: next.approverAccountId, currentApproverName: next.approverName, approvalReason: reason }
   }
   database.update('approval-instances', instance.id, { status: 'approved', completedAt: timestamp })
   if (record.category === '设备采购') {
     return {
       status: 'approved',
-      purchaseStage: 'finance_confirmation',
-      purchaseStageLabel: '待财务确认',
+      purchaseStage: 'production',
+      purchaseStageLabel: '待导入生产',
       currentApproverId: '',
       currentApproverName: '',
-      businessConfirmedAt: timestamp,
-      businessConfirmedBy: auth.session?.displayName || '',
+      rdConfirmedAt: timestamp,
+      rdConfirmedBy: auth.session?.displayName || '',
       approvalReason: reason,
     }
   }
@@ -1394,14 +1497,14 @@ function transferDeviceDealer(record: EntityRecord) {
 
 export const mockService = {
   canAction(moduleKey: string, record: EntityRecord, actionKey: string) {
-    return actionDecision(moduleKey, record, actionKey)
+    return actionDecision(canonicalModuleKey(moduleKey), record, actionKey)
   },
   async list(moduleKey: string, query: PageQuery): Promise<TableDataInfo<EntityRecord>> {
     await sleep()
     if (!hasPermission(useAuthStore().permissions, `${moduleKey}:view`)) return { code: 403, msg: '无权查看该模块', rows: [], total: 0 }
     const tab = moduleConfigs[moduleKey]?.tabs.find((item) => item.key === query.tab)
     const sourceKey = tab?.source || moduleKey
-    const rows = filterRows(moduleKey, visibleRecords(sourceKey).map(withDeviceIdentity), query, sourceKey)
+    const rows = filterRows(moduleKey, visibleRecords(sourceKey).map(withDeviceIdentity), query)
     if (query.orderByColumn) {
       const field = query.orderByColumn
       const direction = query.isAsc === 'desc' ? -1 : 1
@@ -1424,7 +1527,7 @@ export const mockService = {
     if (!config && !specialExportTitles[moduleKey] || config?.exportable === false) return fail(405, '该模块不支持导出', [] as EntityRecord[])
     const tab = config?.tabs.find((item) => item.key === query.tab) || config?.tabs[0]
     const sourceKey = tab?.source || moduleKey
-    const rows = filterRows(moduleKey, visibleRecords(sourceKey).map(withDeviceIdentity), query, sourceKey)
+    const rows = filterRows(moduleKey, visibleRecords(sourceKey).map(withDeviceIdentity), query)
     if (query.orderByColumn) {
       const field = query.orderByColumn
       const direction = query.isAsc === 'desc' ? -1 : 1
@@ -1560,7 +1663,7 @@ export const mockService = {
           pageSize: Number.MAX_SAFE_INTEGER,
           tab: targetTab?.key,
           relationFilters: item.relationFilters,
-        }, sourceKey)
+        })
         if (!matched.length) continue
         items.push({ ...item, count: matched.length })
       }
@@ -1604,6 +1707,9 @@ export const mockService = {
     }
     if (optionSource === 'dealer-organizations') options = [option('平台中心', 'platform'), ...visibleRecords('dealers').filter((item) => item.status === 'normal').map((item) => option(item.name, item.organizationId || item.ownerId))]
     if (optionSource === 'app-users') options = visibleRecords('users').filter((item) => item.status === 'normal').map((item) => option(`${item.name} · ${item.account}`, item.id))
+    if (optionSource === 'dealer-regions') options = dealerRegionOptions
+      .filter((item) => item.domain === useAuthStore().session?.domain)
+      .map((item) => option(item.label, item.value))
     if (optionSource === 'device-types') options = useDatabaseStore().records('product-catalog')
       .filter((item) => item.status === 'normal')
       .map((item) => option(String(item.deviceType), String(item.deviceType)))
@@ -1622,6 +1728,24 @@ export const mockService = {
     if (optionSource === 'product-descriptors') options = useDatabaseStore().records('product-catalog')
       .filter((item) => item.status === 'normal')
       .map((item) => option(`${item.descriptor || `${item.name} ${item.deviceModel}`} · ${item.specification || '规格待配置'}`, String(item.descriptor || `${item.name} ${item.deviceModel}`)))
+    if (optionSource === 'ota-product-names') options = useDatabaseStore().records('product-catalog')
+      .filter((item) => item.status === 'normal')
+      .map((item) => option(item.name, item.name))
+    if (optionSource === 'ota-device-types') {
+      const names = stringArray(context.applicableProductNames)
+      options = useDatabaseStore().records('product-catalog')
+        .filter((item) => item.status === 'normal' && (!names.length || names.includes(String(item.name))))
+        .map((item) => option(item.deviceType, item.deviceType))
+    }
+    if (optionSource === 'ota-device-models') {
+      const names = stringArray(context.applicableProductNames)
+      const types = stringArray(context.applicableDeviceTypes)
+      options = useDatabaseStore().records('product-catalog')
+        .filter((item) => item.status === 'normal'
+          && (!names.length || names.includes(String(item.name)))
+          && (!types.length || types.includes(String(item.deviceType))))
+        .map((item) => option(`${item.deviceModel} · ${item.name} · ${item.specification || '规格待配置'}`, item.deviceModel))
+    }
     if (optionSource === 'purchasable-items') options = [
       ...useDatabaseStore().records('product-catalog').filter((item) => item.status === 'normal').map((item) => option(`设备 · ${item.descriptor || `${item.name} ${item.deviceModel}`}`, `product:${item.id}`)),
       ...useDatabaseStore().records('material-catalog').filter((item) => item.status !== 'disabled').map((item) => option(`物料 · ${item.name}`, `material:${item.id}`)),
@@ -1647,12 +1771,16 @@ export const mockService = {
   },
   async resolveFields(moduleKey: string, form: Partial<EntityRecord>) {
     await sleep(5)
-    return ok(deriveFields(moduleKey, form), '关联字段已更新')
+    if (moduleKey === 'product-purchase') form = { ...form, category: '设备采购' }
+    return ok(deriveFields(canonicalModuleKey(moduleKey), form), '关联字段已更新')
   },
   async create(moduleKey: string, input: Partial<EntityRecord>) {
     await sleep()
     const permission = createDecision(moduleKey)
     if (!permission.allowed) return fail(403, permission.reason, null)
+    const requestedModuleKey = moduleKey
+    moduleKey = canonicalModuleKey(moduleKey)
+    if (requestedModuleKey === 'product-purchase') input = { ...input, category: '设备采购' }
     const database = useDatabaseStore()
     const auth = useAuthStore()
     const session = auth.session as UserSession
@@ -1698,7 +1826,7 @@ export const mockService = {
       database.transaction(() => {
         sns.forEach((sn, index) => {
           const identity = deviceIdentity(payload.deviceModel)
-          const device = database.create('devices', { code: sn, name: identity.descriptor, productId: payload.productId, deviceName: identity.deviceName, deviceModel: identity.deviceModel, deviceType: identity.deviceType, specification: identity.specification, country: String(payload.region || '').split(/[·]/)[0].trim(), region: String(payload.region || ''), activation: 'inactive', activationDate: '', bindingStatus: 'unbound', account: '-', firmware: 'v1.0.0', inventoryStatus: 'in_stock', warehouseId: payload.warehouseId, warehouseName: payload.warehouseName, warehouseLocationId: payload.warehouseLocationId, warehouseLocation: payload.warehouseLocation, inboundAt: new Date().toISOString(), status: 'offline', owner: String(payload.warehouseName || '平台中心仓'), ownerId: 'platform', domain: session.domain })
+          const device = database.create('devices', { code: sn, name: identity.descriptor, productId: payload.productId, deviceName: String(payload.deviceName || identity.deviceName), deviceModel: identity.deviceModel, deviceType: identity.deviceType, specification: identity.specification, country: String(payload.region || '').split(/[·]/)[0].trim(), region: String(payload.region || ''), activation: 'inactive', activationDate: '', bindingStatus: 'unbound', account: '-', firmware: 'v1.0.0', inventoryStatus: 'in_stock', warehouseId: payload.warehouseId, warehouseName: payload.warehouseName, warehouseLocationId: payload.warehouseLocationId, warehouseLocation: payload.warehouseLocation, inboundAt: new Date().toISOString(), status: 'offline', owner: String(payload.warehouseName || '平台中心仓'), ownerId: 'platform', domain: session.domain })
           const row = database.create('warehouse', { ...payload, code: index === 0 ? payload.code : `${payload.code}-${index + 1}`, name: device.name, deviceId: device.id, deviceSN: sn, quantity: 1, inboundAt: new Date().toISOString(), status: 'normal', owner: '平台中心仓', ownerId: 'platform', domain: session.domain })
           database.create('stock-movements', { code: `STK-${String(payload.code)}-${index + 1}`, name: device.name, category: '设备入库', deviceId: device.id, deviceSN: sn, quantity: 1, subjectId: row.id, subjectCode: row.code, status: 'completed', owner: '平台中心仓', ownerId: 'platform', domain: session.domain })
           first ||= row
@@ -1713,8 +1841,8 @@ export const mockService = {
       if (payload.category === '设备采购') {
         payload.paymentStatus = '未登记'
         payload.warrantyResult = '不适用'
-        payload.purchaseStage = 'business_confirmation'
-        payload.purchaseStageLabel = '待业务确认'
+        payload.purchaseStage = 'sales_confirmation'
+        payload.purchaseStageLabel = '待销售确认'
         payload.contractStatus = '待确认'
         payload.deliveryStatus = '待处理'
         payload.initiatedBy = session.displayName
@@ -1772,7 +1900,6 @@ export const mockService = {
       record.ownerId = String(record.organizationId)
       record.owner = record.name
       createAccount(record, payload, 'dealer')
-      syncDealerUserIdentity(record)
     }
     if (moduleKey === 'admins') createAccount(record, payload, 'admin')
     if (moduleKey === 'materials') {
@@ -1804,7 +1931,11 @@ export const mockService = {
     if (moduleKey === 'warranty' && (auth.session?.role === 'platform' || String(record.dealerId || record.ownerId) !== auth.session?.ownerId)) {
       return fail(403, '经销商只能编辑自身质保规则', null)
     }
-    const payload = deriveFields(moduleKey, ['faq-documents', 'projects'].includes(moduleKey) ? { ...record, ...input, id } : { ...input, id })
+    const editableInput = moduleKey === 'approval-flow'
+      ? Object.fromEntries(['levels', 'level1ApproverId', 'level2ApproverId', 'platformApproverId'].filter((field) => Object.hasOwn(input, field)).map((field) => [field, input[field]]))
+      : input
+    const payload = deriveFields(moduleKey, ['faq-documents', 'projects'].includes(moduleKey) ? { ...record, ...editableInput, id } : { ...editableInput, id })
+    if (moduleKey === 'approval-flow') Object.assign(payload, { name: record.name, menuKey: record.menuKey, menuLabel: record.menuLabel, flowType: record.flowType, flowTypeLabel: record.flowTypeLabel, businessFlow: record.businessFlow, status: 'normal' })
     if (auth.session?.role !== 'platform') {
       delete payload.ownerId
       delete payload.owner
@@ -1862,7 +1993,6 @@ export const mockService = {
         status: updated.status,
       })
     }
-    if (moduleKey === 'dealers') syncDealerUserIdentity(updated)
     database.audit(`编辑${moduleConfigs[moduleKey]?.title || moduleKey}`, record.code, auth.session!.displayName, false, record)
     if (currentAccounts.some((item) => item.id === auth.session?.accountId)) auth.refreshSession()
     return ok(updated, '保存成功')
@@ -1882,6 +2012,7 @@ export const mockService = {
   },
   async action(moduleKey: string, id: string, actionKey: string, input: Record<string, unknown> | string = {}): Promise<ApiResult<EntityRecord | null>> {
     await sleep()
+    moduleKey = canonicalModuleKey(moduleKey)
     const database = useDatabaseStore()
     const auth = useAuthStore()
     const payload = typeof input === 'string' ? { reason: input, result: input, replyContent: input } : input
@@ -1955,8 +2086,8 @@ export const mockService = {
       const nextPublished = record.status !== 'published'
       Object.assign(patch, { status: nextPublished ? 'published' : moduleKey === 'app-versions' ? 'disabled' : 'withdrawn', releaseAt: nextPublished ? new Date().toISOString() : record.releaseAt })
       if (moduleKey === 'ota' && nextPublished) {
-        const compatible = database.records('devices').filter((item) => item.name === record.deviceType || item.deviceModel === record.compatibleModel)
-        for (const device of compatible) database.create('ota-results', { name: `${device.code}升级结果`, firmwareId: record.id, deviceSN: device.code, targetVersion: record.name, result: 'simulated_success', resultLabel: '静态模拟成功', completedAt: new Date().toISOString(), status: 'completed', owner: device.owner, ownerId: device.ownerId, domain: device.domain })
+        const compatible = database.records('devices').filter((item) => otaMatchesDevice(record, item))
+        for (const device of compatible) database.create('ota-results', { name: `${device.code}升级结果`, firmwareId: record.id, deviceSN: device.code, deviceName: device.deviceName, deviceType: device.deviceType, deviceModel: device.deviceModel, targetVersion: record.name, result: 'simulated_success', resultLabel: '静态模拟成功', completedAt: new Date().toISOString(), status: 'completed', owner: device.owner, ownerId: device.ownerId, domain: device.domain })
       }
     }
     if (actionKey === 'rollback' && moduleKey === 'ota') {
@@ -1994,9 +2125,9 @@ export const mockService = {
       const laborUnitPrice = Number(payload.laborUnitPrice || 0)
       const materialAmount = Number(payload.materialAmount || 0)
       const adjustment = Number(payload.adjustment || 0)
-      const orderStatus = String(payload.orderStatus || 'pending')
-      const paymentChannel = String(payload.paymentChannel || '线下登记')
-      const paidAt = String(payload.paidAt || new Date().toISOString().slice(0, 10))
+      const orderStatus = 'pending'
+      const paymentChannel = '二维码支付'
+      const paidAt = ''
       const laborSubtotal = Math.round(laborHours * laborUnitPrice * 100) / 100
       const total = Math.round((laborSubtotal + materialAmount + adjustment) * 100) / 100
       if (laborHours < 0.5 || laborUnitPrice < 0 || materialAmount < 0 || total <= 0) return fail(422, '人工工时、费用明细或账单总额无效', null)
@@ -2004,14 +2135,14 @@ export const mockService = {
         const expense = createRelation('expense-records', record, {
           name: `${record.code}维修账单`, category: '维修账单', laborHours, laborUnitPrice, laborSubtotal,
           materialAmount, adjustment, amount: total, currency: 'CNY', paymentMethod: paymentChannel,
-          paymentReference: payload.paymentReference || '', paidAt, paymentNote: payload.billingNote,
+          paymentReference: '', paidAt, paymentNote: payload.billingNote,
           operator: auth.session!.displayName, status: orderStatus,
         })
         const createdPayment = database.create('payments', {
           code: `BILL-${Date.now().toString().slice(-11)}`, name: `${record.code}维修账单`, category: '平台维修账单',
           sourceType: 'platform', sourceLabel: '平台费用登记', businessType: '维修账单', channel: paymentChannel,
-          amount: total, currency: 'CNY', account: record.account || record.owner, paidAt,
-          paymentReference: payload.paymentReference || '', expenseRecordId: expense.id, subjectId: record.id,
+          amount: total, orderAmount: total, paidAmount: 0, remainingAmount: total, paymentCount: 0, currency: 'CNY', account: record.account || record.owner, paidAt,
+          paymentReference: '', paymentInstruction: '扫描订单对应的供应商收款二维码，付款后上传截图；金额与订单由财务人工核实。', expenseRecordId: expense.id, subjectId: record.id,
           subjectCode: record.code, subjectModule: 'repairs', recordedBy: auth.session!.displayName,
           status: orderStatus, owner: record.owner, ownerId: record.ownerId, domain: record.domain,
         })
@@ -2036,6 +2167,14 @@ export const mockService = {
       database.create('replacement-records', { name: `${record.materialName || record.name}更换记录`, issuanceId: record.id, sourceRequestId: record.sourceRequestId, repairId: repair.id, repairCode: repair.code, deviceSN: record.deviceSN, oldPartSerial: payload.oldPartSerial, newPartSerial: payload.newPartSerial, reason: payload.reason, operator: auth.session!.displayName, status: 'completed', owner: record.owner, ownerId: record.ownerId, domain: record.domain })
       database.update('repairs', repair.id, { hasReplacement: true, replacementNote: `${payload.oldPartSerial} → ${payload.newPartSerial}` })
       Object.assign(patch, { status: 'completed', replacedAt: new Date().toISOString(), oldPartSerial: payload.oldPartSerial, newPartSerial: payload.newPartSerial })
+      const sourceRequest = database.records('materials').find((item) => item.id === record.sourceRequestId || item.code === record.sourceRequestCode)
+      if (sourceRequest) database.update('materials', sourceRequest.id, { status: 'completed', completedAt: new Date().toISOString(), fulfillmentStatus: '已完成' })
+    }
+    if (actionKey === 'confirm-receipt' && moduleKey === 'issuance') {
+      Object.assign(patch, { status: 'received', receivedAt: new Date().toISOString(), receivedBy: auth.session!.displayName, receiptNote: payload.reason })
+      const sourceRequest = database.records('materials').find((item) => item.id === record.sourceRequestId || item.code === record.sourceRequestCode)
+      if (sourceRequest) database.update('materials', sourceRequest.id, { fulfillmentStatus: '已收货，待更换' })
+      database.notify('售后物料已确认收货', `${record.code} · ${record.materialName || record.name}`, record)
     }
     if (actionKey === 'unbind') {
       const targetSN = `${record.code}-1`
@@ -2050,35 +2189,56 @@ export const mockService = {
       if (!courier) return fail(422, '请选择已启用的快递公司', null)
       if (!String(payload.trackingNo || '').trim()) return fail(422, '请填写物流单号', null)
       if (database.records('logistics-records').some((item) => item.trackingNo === payload.trackingNo)) return fail(409, '物流单号已被使用', null)
-      Object.assign(patch, { status: 'shipped', courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, shippedAt: new Date().toISOString() })
+      Object.assign(patch, { status: 'shipped', courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, shipmentPhoto: payload.shipmentPhoto, shippedAt: new Date().toISOString() })
       try {
         database.transaction(() => {
           deductMaterialStock(record)
-          createRelation('logistics-records', record, { courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, content: '已揽收，等待转运', status: 'shipped' })
-          database.create('issuance', { code: `ISS-${Date.now().toString().slice(-8)}`, name: String(record.materialName || record.name), materialName: record.materialName, materialId: record.materialId, quantity: record.quantity, sourceRequestId: record.id, sourceRequestCode: record.code, deviceSN: record.deviceSN, courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, recipient: record.dealer || record.owner, issuedAt: new Date().toISOString(), replacedAt: '', status: 'shipped', owner: record.owner, ownerId: record.ownerId, domain: record.domain })
+          createRelation('logistics-records', record, { courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, shipmentPhoto: payload.shipmentPhoto, content: '已揽收，等待转运', status: 'shipped' })
+          database.create('issuance', { code: `ISS-${Date.now().toString().slice(-8)}`, name: String(record.materialName || record.name), materialName: record.materialName, materialId: record.materialId, quantity: record.quantity, sourceRequestId: record.id, sourceRequestCode: record.code, deviceSN: record.deviceSN, courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, shipmentPhoto: payload.shipmentPhoto, recipient: record.dealer || record.owner, issuedAt: new Date().toISOString(), replacedAt: '', status: 'shipped', owner: record.owner, ownerId: record.ownerId, domain: record.domain })
         })
       } catch (error) {
         return fail(422, error instanceof Error ? error.message : '库存扣减失败', null)
       }
       database.notify('物料已发货', `${record.code} · ${courier.name} · ${payload.trackingNo}`, record)
     }
+    if (actionKey === 'start-production' && moduleKey === 'materials') {
+      Object.assign(patch, {
+        purchaseStage: 'finance_confirmation', purchaseStageLabel: '待财务核实',
+        productionBatchNo: payload.productionBatchNo, productionAt: payload.productionAt,
+        productionImportedAt: new Date().toISOString(), productionImportedBy: auth.session!.displayName,
+        productionNote: payload.reason, status: 'approved', paymentStatus: '待核实',
+      })
+      database.notify('设备采购已导入生产', `${record.code} · 批次 ${String(payload.productionBatchNo)}`, record)
+    }
     if (['finance-confirm', 'record-expense'].includes(actionKey)) {
       const actualUnitPrice = Number(payload.actualUnitPrice || 0)
-      const paidAmount = Number(payload.paidAmount || 0)
+      const installmentAmount = Math.round(Number(payload.paidAmount || 0) * 100) / 100
       const purchaseItems = database.records('purchase-items').filter((item) => item.subjectId === record.id)
-      const amount = purchaseItems.length > 1
-        ? paidAmount
-        : Math.round((actualUnitPrice || Number(purchaseItems[0]?.unitPrice || record.estimatedUnitPrice || 0)) * Number(record.quantity || 0) * 100) / 100
-      if (paidAmount <= 0 || amount <= 0) return fail(422, '采购费用必须大于 0', null)
-      if (purchaseItems.length <= 1 && Math.abs(paidAmount - amount) > 0.01) return fail(422, `实付总金额应为 ¥${amount.toLocaleString()}`, null)
-      if (!String(payload.paymentMethod || '').trim() || !String(payload.paymentReference || '').trim() || !String(payload.paidAt || '').trim()) return fail(422, '请完整填写付款方式、凭证和日期', null)
+      const orderAmount = Math.round(Number(record.orderAmount || (actualUnitPrice > 0 && purchaseItems.length <= 1
+        ? actualUnitPrice * Number(record.quantity || purchaseItems[0]?.quantity || 0)
+        : record.amount || 0)) * 100) / 100
+      const previousPaidAmount = Math.round(Number(record.paidAmount || 0) * 100) / 100
+      const remainingBeforePayment = Math.max(0, Math.round((orderAmount - previousPaidAmount) * 100) / 100)
+      if (installmentAmount <= 0 || orderAmount <= 0) return fail(422, '采购费用必须大于 0', null)
+      if (installmentAmount - remainingBeforePayment > 0.01) return fail(422, `本次付款不能超过待付金额 ¥${remainingBeforePayment.toLocaleString()}`, null)
+      if (!String(payload.paymentProof || '').startsWith('data:image/') || !String(payload.paymentReference || '').trim() || !String(payload.paidAt || '').trim()) return fail(422, '请完整填写付款截图、支付凭证号和日期', null)
+      if (database.records('expense-records').some((item) => item.paymentReference === payload.paymentReference)) return fail(409, '付款凭证/流水号已登记', null)
+      const paidAmount = Math.round((previousPaidAmount + installmentAmount) * 100) / 100
+      const remainingAmount = Math.max(0, Math.round((orderAmount - paidAmount) * 100) / 100)
+      const fullyPaid = remainingAmount <= 0.01
+      const releasedToWarehouse = record.purchaseStage === 'warehouse_fulfillment' || payload.warehouseDecision === 'release'
+      const paymentCount = Number(record.paymentCount || 0) + 1
       Object.assign(patch, {
         actualUnitPrice: purchaseItems.length > 1 ? 0 : actualUnitPrice || Number(purchaseItems[0]?.unitPrice || record.estimatedUnitPrice || 0),
-        amount,
+        amount: orderAmount,
+        orderAmount,
         paidAmount,
+        remainingAmount,
+        paymentCount,
         currency: 'CNY',
-        paymentStatus: '已登记',
-        paymentMethod: payload.paymentMethod,
+        paymentStatus: fullyPaid ? '已核实付清' : '已核实部分付款',
+        paymentMethod: '二维码支付',
+        paymentProof: payload.paymentProof,
         paymentReference: payload.paymentReference,
         paidAt: payload.paidAt,
         paymentNote: payload.paymentNote,
@@ -2086,32 +2246,44 @@ export const mockService = {
         contractNo: payload.contractNo || '',
         financeConfirmedAt: new Date().toISOString(),
         financeConfirmedBy: auth.session!.displayName,
-        purchaseStage: 'warehouse_fulfillment',
-        purchaseStageLabel: '待仓库发货',
-        deliveryStatus: '待发货',
+        warehouseDecision: payload.warehouseDecision,
+        warehouseDecisionLabel: releasedToWarehouse ? '允许进入仓库处理' : '暂不放行',
+        purchaseStage: releasedToWarehouse ? 'warehouse_fulfillment' : 'finance_confirmation',
+        purchaseStageLabel: releasedToWarehouse ? '待仓库发货' : `待财务核实（已核实 ¥${paidAmount.toLocaleString()}）`,
+        deliveryStatus: releasedToWarehouse ? '待发货' : '财务暂未放行',
         status: 'approved',
       })
       const expense = createRelation('expense-records', record, {
-        name: `${record.deviceModel || record.name}采购费用`,
+        name: `${record.deviceModel || record.name}第 ${paymentCount} 笔采购付款`,
         category: '设备采购',
-        amount,
+        amount: installmentAmount,
+        orderAmount,
+        accumulatedPaidAmount: paidAmount,
+        remainingAmount,
+        paymentSequence: paymentCount,
         actualUnitPrice,
         quantity: record.quantity,
         currency: 'CNY',
-        paymentMethod: payload.paymentMethod,
+        paymentMethod: '二维码支付',
+        paymentProof: payload.paymentProof,
         paymentReference: payload.paymentReference,
         paidAt: payload.paidAt,
         paymentNote: payload.paymentNote,
+        warehouseDecision: payload.warehouseDecision,
+        warehouseDecisionLabel: releasedToWarehouse ? '允许进入仓库处理' : '暂不放行',
         contractStatus: payload.contractStatus || '无需合同',
         contractNo: payload.contractNo || '',
         operator: auth.session!.displayName,
         status: 'completed',
       })
       recordPlatformBill(record, expense, 'materials')
-      database.notify('设备采购财务确认已完成', `${record.code} · ¥${amount.toLocaleString()} · 已进入待仓库发货`, record)
+      database.notify(releasedToWarehouse ? '设备采购付款已核实并放行' : '设备采购付款已核实', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 累计 ¥${paidAmount.toLocaleString()}`, record)
     }
     if (actionKey === 'purchase-ship') {
       const selected = Array.isArray(payload.selectedDevices) ? payload.selectedDevices.map(String) : []
+      const courier = database.records('couriers').find((item) => item.id === payload.courierId && item.category === '快递公司' && item.status === 'normal')
+      if (!courier) return fail(422, '请选择已启用的快递公司', null)
+      if (database.records('logistics-records').some((item) => item.trackingNo === payload.trackingNo)) return fail(409, '物流单号已被使用', null)
       const items = database.records('purchase-items').filter((item) => item.subjectId === record.id)
       const deviceItems = items.filter((item) => item.itemType === '设备')
       const requiredDeviceCount = deviceItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
@@ -2145,9 +2317,11 @@ export const mockService = {
           database.create('purchase-fulfillments', {
             code: `FUL-${Date.now().toString().slice(-10)}`, name: `${record.code}仓库发货`, subjectId: record.id, subjectCode: record.code,
             warehouseId: warehouse.id, warehouseName: warehouse.name, selectedDevices: selected, deviceSN: selected.join('、'),
-            deliveryMethod: payload.deliveryMethod, deliveryReference: payload.deliveryReference, shippedAt: payload.shippedAt,
+            deliveryMethod: '物流配送', deliveryReference: payload.trackingNo, courier: courier.name, courierId: courier.id,
+            trackingNo: payload.trackingNo, shipmentPhoto: payload.shipmentPhoto, shippedAt: payload.shippedAt,
             operator: auth.session!.displayName, status: 'shipped', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
           })
+          createRelation('logistics-records', record, { courier: courier.name, courierId: courier.id, trackingNo: payload.trackingNo, shipmentPhoto: payload.shipmentPhoto, content: '已发货，等待物流更新', status: 'shipped' })
         })
       } catch (error) {
         return fail(422, error instanceof Error ? error.message : '采购发货失败', null)
@@ -2156,8 +2330,12 @@ export const mockService = {
         selectedDevices: selected,
         warehouseId: warehouse.id,
         warehouseName: warehouse.name,
-        deliveryMethod: payload.deliveryMethod,
-        deliveryReference: payload.deliveryReference,
+        deliveryMethod: '物流配送',
+        deliveryReference: payload.trackingNo,
+        courier: courier.name,
+        courierId: courier.id,
+        trackingNo: payload.trackingNo,
+        shipmentPhoto: payload.shipmentPhoto,
         shippedAt: payload.shippedAt,
         purchaseStage: 'shipped',
         purchaseStageLabel: '已发货',
@@ -2166,14 +2344,84 @@ export const mockService = {
       })
       database.notify('设备采购已发货', `${record.code} · ${selected.length} 台 · ${warehouse.name}`, record)
     }
+    if (actionKey === 'confirm-purchase-receipt' && moduleKey === 'materials') {
+      Object.assign(patch, {
+        purchaseStage: 'received', purchaseStageLabel: '已收货', deliveryStatus: '已收货',
+        receivedAt: new Date().toISOString(), receivedBy: auth.session!.displayName,
+        receiptPhoto: payload.receiptPhoto || '', receiptNote: payload.reason, status: 'completed',
+      })
+      const fulfillment = database.records('purchase-fulfillments').find((item) => item.subjectId === record.id && item.status === 'shipped')
+      if (fulfillment) database.update('purchase-fulfillments', fulfillment.id, { status: 'received', receivedAt: patch.receivedAt, receivedBy: patch.receivedBy, receiptPhoto: patch.receiptPhoto, receiptNote: patch.receiptNote })
+      database.notify('设备采购已确认收货', `${record.code} · ${String(payload.reason || '')}`, record)
+    }
     if (actionKey === 'test') {
       database.create('external-call-logs', { code: `EXT-${Date.now().toString().slice(-8)}`, name: '快递100轨迹测试', category: '物流接口', provider: '快递100', requestRef: payload.trackingNo, responseTime: 286, result: 'simulated_success', resultLabel: '静态模拟成功', status: 'completed', owner: record.owner, ownerId: record.ownerId, domain: record.domain })
+    }
+    if (actionKey === 'finance-verify' && moduleKey === 'payments') {
+      const installmentAmount = Math.round(Number(payload.paidAmount || 0) * 100) / 100
+      const orderAmount = Math.round(Number(record.orderAmount || record.amount || 0) * 100) / 100
+      const previousPaidAmount = Math.round(Number(record.paidAmount || 0) * 100) / 100
+      const remainingBeforePayment = Math.max(0, Math.round((orderAmount - previousPaidAmount) * 100) / 100)
+      if (installmentAmount <= 0) return fail(422, '本次核实金额必须大于 0', null)
+      if (installmentAmount - remainingBeforePayment > 0.01) return fail(422, `本次核实金额不能超过待付金额 ¥${remainingBeforePayment.toLocaleString()}`, null)
+      if (!String(payload.paymentProof || '').startsWith('data:image/')) return fail(422, '请上传有效的付款截图', null)
+      if (database.records('payment-transactions').some((item) => item.paymentReference === payload.paymentReference)) return fail(409, '支付凭证号已核实', null)
+      const paidAmount = Math.round((previousPaidAmount + installmentAmount) * 100) / 100
+      const remainingAmount = Math.max(0, Math.round((orderAmount - paidAmount) * 100) / 100)
+      const status = remainingAmount <= 0.01 ? 'verified' : 'pending'
+      database.create('payment-transactions', {
+        code: `PAY-${Date.now().toString().slice(-12)}`, name: `${record.code}第 ${Number(record.paymentCount || 0) + 1} 笔付款核实`,
+        paymentId: record.id, subjectId: record.subjectId, subjectCode: record.subjectCode,
+        amount: installmentAmount, channel: '二维码支付', paymentReference: payload.paymentReference,
+        paymentProof: payload.paymentProof, paidAt: payload.paidAt, verificationNote: payload.verificationNote,
+        verifiedAt: new Date().toISOString(), operator: auth.session!.displayName,
+        status: 'verified', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
+      })
+      Object.assign(patch, {
+        orderAmount, paidAmount, remainingAmount, paymentCount: Number(record.paymentCount || 0) + 1,
+        channel: '二维码支付', paymentReference: payload.paymentReference, paymentProof: payload.paymentProof,
+        paidAt: payload.paidAt, verificationNote: payload.verificationNote,
+        verifiedAt: new Date().toISOString(), verifiedBy: auth.session!.displayName, status,
+      })
+      database.notify(status === 'verified' ? '支付订单已全部核实' : '部分付款已核实，订单待继续支付', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 待付 ¥${remainingAmount.toLocaleString()}`, record)
+    }
+    if (actionKey === 'record-payment' && moduleKey === 'payments') {
+      const installmentAmount = Math.round(Number(payload.paidAmount || 0) * 100) / 100
+      const orderAmount = Math.round(Number(record.orderAmount || record.amount || 0) * 100) / 100
+      const previousPaidAmount = Math.round(Number(record.paidAmount || 0) * 100) / 100
+      const remainingBeforePayment = Math.max(0, Math.round((orderAmount - previousPaidAmount) * 100) / 100)
+      if (installmentAmount <= 0) return fail(422, '本次付款金额必须大于 0', null)
+      if (installmentAmount - remainingBeforePayment > 0.01) return fail(422, `本次付款不能超过待付金额 ¥${remainingBeforePayment.toLocaleString()}`, null)
+      if (database.records('payment-transactions').some((item) => item.paymentReference === payload.paymentReference)) return fail(409, '付款凭证/流水号已登记', null)
+      const paidAmount = Math.round((previousPaidAmount + installmentAmount) * 100) / 100
+      const remainingAmount = Math.max(0, Math.round((orderAmount - paidAmount) * 100) / 100)
+      const status = remainingAmount <= 0.01 ? 'paid' : 'partial'
+      database.create('payment-transactions', {
+        code: `PAY-${Date.now().toString().slice(-12)}`, name: `${record.code}第 ${Number(record.paymentCount || 0) + 1} 笔付款`,
+        paymentId: record.id, subjectId: record.subjectId, subjectCode: record.subjectCode,
+        amount: installmentAmount, channel: payload.paymentMethod, paymentReference: payload.paymentReference,
+        paidAt: payload.paidAt, paymentNote: payload.paymentNote, operator: auth.session!.displayName,
+        status: 'paid', owner: record.owner, ownerId: record.ownerId, domain: record.domain,
+      })
+      Object.assign(patch, {
+        orderAmount, paidAmount, remainingAmount, paymentCount: Number(record.paymentCount || 0) + 1,
+        channel: payload.paymentMethod, paymentReference: payload.paymentReference, paidAt: payload.paidAt,
+        paymentNote: payload.paymentNote, status,
+      })
+      database.notify(status === 'paid' ? '支付订单已付清' : '支付订单收到部分付款', `${record.code} · 本次 ¥${installmentAmount.toLocaleString()} · 待付 ¥${remainingAmount.toLocaleString()}`, record)
+    }
+    if (actionKey === 'resolve' && moduleKey === 'cross-region-activations') {
+      Object.assign(patch, {
+        status: 'resolved', resolution: payload.resolution, resolutionNote: payload.reason,
+        resolvedAt: new Date().toISOString(), resolvedBy: auth.session!.displayName,
+      })
+      database.notify('跨区域激活异常已处理', `${record.code} · ${String(payload.reason || '')}`, record)
     }
     if (actionKey === 'permissions') {
       const permissions = Array.isArray(payload.permissions) ? payload.permissions.map(String).filter((item) => item.includes(':')) : []
       Object.assign(patch, { permissionUpdatedAt: new Date().toISOString(), permissions, permissionCount: permissions.length })
     }
-    if (actionKey === 'process' || moduleKey === 'service-transfer' && ['confirm-transfer', 'approve-transfer-fee', 'reject-transfer-fee'].includes(actionKey)) {
+    if (['process', 'confirm-outbound', 'reject-outbound'].includes(actionKey) || moduleKey === 'service-transfer' && ['confirm-transfer', 'approve-transfer-fee', 'reject-transfer-fee'].includes(actionKey)) {
       if (moduleKey === 'sn-replacement') {
         const original = visibleRecords('devices').find((item) => item.code === record.originalSN)
         if (!original) return fail(403, '原 SN 不存在或不属于当前经销商数据范围', null)
@@ -2234,6 +2482,8 @@ export const mockService = {
         patch.status = String(payload.nextStatus || (record.status === 'shipped' ? 'received' : 'completed'))
         if (patch.status === 'completed') patch.replacedAt = new Date().toISOString()
       } else if (moduleKey === 'warehouse') {
+        if (actionKey === 'confirm-outbound') payload.decision = 'outbound'
+        if (actionKey === 'reject-outbound') payload.decision = 'rejected'
         const validDecisions = record.category === '调货' ? ['approved', 'rejected'] : ['outbound', 'rejected']
         if (!validDecisions.includes(String(payload.decision))) return fail(422, `请选择有效的${record.category === '调货' ? '审批' : '出库'}结果`, null)
         if (record.category === '调货') {
@@ -2255,7 +2505,7 @@ export const mockService = {
     const updated = database.update(moduleKey, id, patch) || record
     if (actionKey === 'approve' && moduleKey === 'dealers') createAccount(updated, { ...updated, initialPassword: updated.initialPassword || 'Dealer123!' }, 'dealer')
     createRelation('workflow-events', updated, { sourceModule: moduleKey, title: actionConfig?.label || actionKey, content: String(payload.reason || payload.result || payload.replyContent || payload.paymentReference || '操作已完成'), operator: auth.session!.displayName, status: 'completed' })
-    const risk = ['remote-disable', 'remote-enable', 'unbind', 'reset-password', 'publish', 'approve', 'reject', 'finance-confirm', 'record-expense', 'purchase-ship', 'record-bill', 'confirm-transfer', 'approve-transfer-fee', 'reject-transfer-fee', 'escalate', 'process', 'change-region'].includes(actionKey)
+    const risk = ['remote-disable', 'remote-enable', 'unbind', 'reset-password', 'publish', 'approve', 'reject', 'start-production', 'finance-confirm', 'record-expense', 'purchase-ship', 'confirm-purchase-receipt', 'finance-verify', 'record-bill', 'confirm-transfer', 'approve-transfer-fee', 'reject-transfer-fee', 'escalate', 'process', 'confirm-outbound', 'reject-outbound', 'change-region'].includes(actionKey)
     database.audit(actionConfig?.label || `执行${actionKey}`, `${record.code}${payload.reason ? ` · ${payload.reason}` : ''}`, auth.session!.displayName, risk, record)
     if (actionKey === 'permissions' || accountFor(moduleKey, record)?.id === auth.session?.accountId) auth.refreshSession()
     return ok(updated, `${actionConfig?.label || '操作'}已完成`)

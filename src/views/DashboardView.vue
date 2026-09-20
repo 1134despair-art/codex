@@ -43,8 +43,8 @@ function recalculatePeriod() {
 
 const metrics = computed(() => [
   { label: '注册用户总数', value: counts.value.users || 0, icon: 'users', meta: '当前数据域', delta: '实时', tone: 'blue', route: '/users' },
-  { label: '今日新增用户', value: counts.value.todayUsers || 0, icon: 'user-round', meta: '较昨日', delta: String((counts.value.todayUsers || 0) - (counts.value.yesterdayUsers || 0)), tone: 'green' },
-  { label: '绑定设备总数', value: counts.value.devices || 0, icon: 'cpu', meta: '当前数据域', delta: '实时', tone: 'purple', route: '/devices' },
+  { label: '新增用户数量', value: counts.value.todayUsers || 0, icon: 'user-round', meta: periodLabel.value, delta: '按注册时间', tone: 'green', route: '/users' },
+  { label: '设备总数', value: counts.value.devices || 0, icon: 'cpu', meta: '当前数据域', delta: '实时', tone: 'purple', route: '/devices' },
   { label: '新增设备数量', value: counts.value.todayDevices || 0, icon: 'package-plus', meta: periodLabel.value, delta: '按录入时间', tone: 'cyan', route: '/devices' },
   { label: '待处理报修', value: counts.value.repairsPending || 0, icon: 'wrench', meta: '当前状态', delta: '需处理', tone: 'red', route: '/repairs?tab=pending' },
   { label: '待处理留言', value: counts.value.messagesPending || 0, icon: 'messages-square', meta: '当前状态', delta: '需回复', tone: 'red', route: '/messages?tab=unreplied' },
@@ -52,13 +52,14 @@ const metrics = computed(() => [
 ])
 
 const overviewMetrics = computed(() => [
-  { label: '新增注册用户', value: counts.value.todayUsers || 0, unit: '人', delta: '实时', tone: 'blue', points: '2,36 15,40 29,27 42,31 55,18 69,23 82,11 96,18 112,5 126,13' },
-  { label: '新增设备', value: counts.value.todayDevices || 0, unit: '台', delta: '按录入时间', tone: 'green', points: '2,34 15,18 29,39 43,28 57,17 70,24 84,12 98,18 112,4 126,22' },
-  { label: '报修处理数', value: counts.value.repairsCompleted || 0, unit: '单', delta: '实时', tone: 'orange', points: '2,17 15,29 28,36 42,20 56,37 70,24 84,32 98,8 112,27 126,20' },
-  { label: '留言回复数', value: counts.value.messagesCompleted || 0, unit: '条', delta: '实时', tone: 'blue', points: '2,31 15,35 29,13 43,33 57,19 70,30 84,21 98,36 112,7 126,28' },
+  { label: '待我审批', value: counts.value.approvalsPending || 0, unit: '单', delta: '当前账号', tone: 'blue', points: '2,36 15,40 29,27 42,31 55,18 69,23 82,11 96,18 112,5 126,13' },
+  { label: '待财务核实', value: counts.value.financePending || 0, unit: '单', delta: '付款凭证', tone: 'orange', points: '2,34 15,18 29,39 43,28 57,17 70,24 84,12 98,18 112,4 126,22' },
+  { label: '待仓库发货', value: counts.value.shipmentsPending || 0, unit: '单', delta: '采购履约', tone: 'green', points: '2,17 15,29 28,36 42,20 56,37 70,24 84,32 98,8 112,27 126,20' },
+  { label: '跨区激活异常', value: counts.value.crossRegionPending || 0, unit: '条', delta: '待处理', tone: 'blue', points: '2,31 15,35 29,13 43,33 57,19 70,30 84,21 98,36 112,7 126,28' },
 ])
 
 const quickEntries = computed(() => [
+  { route: 'approval-center', label: '审批中心', description: '处理当前账号的待办审批', icon: 'circle-check-big', tone: 'blue', permission: 'approval-center:view' },
   { route: 'users', label: '用户管理', description: '管理平台注册用户信息与权限', icon: 'users', tone: 'blue', permission: 'users:view' },
   { route: 'devices', label: '设备管理', description: '管理设备信息、绑定与状态', icon: 'cpu', tone: 'green', permission: 'devices:view' },
   { route: 'repairs', label: '故障报修', description: '处理用户报修工单与进度', icon: 'wrench', tone: 'orange', permission: 'repairs:view' },
@@ -85,8 +86,8 @@ function renderDistribution() {
 }
 
 async function load() {
-  const [users, devices, dealers, repairsPending, messagesPending, repairsCompleted, messagesCompleted, repairResult, deviceResult, userResult] = await Promise.all([
-    mockService.count('users'), mockService.count('devices', 'bound'), mockService.count('dealers', 'active'), mockService.count('repairs', 'pending'), mockService.count('messages', 'pending'), mockService.count('repairs', 'completed'), mockService.count('messages', 'completed'), mockService.list('repairs', { pageNum: 1, pageSize: 5, tab: 'pending' }), mockService.all('devices'), mockService.all('users'),
+  const [users, devices, dealers, repairsPending, messagesPending, repairsCompleted, messagesCompleted, repairResult, deviceResult, userResult, approvalResult, paymentResult, materialResult, crossRegionResult] = await Promise.all([
+    mockService.count('users'), mockService.count('devices'), mockService.count('dealers', 'active'), mockService.count('repairs', 'pending'), mockService.count('messages', 'pending'), mockService.count('repairs', 'completed'), mockService.count('messages', 'completed'), mockService.list('repairs', { pageNum: 1, pageSize: 5, tab: 'pending' }), mockService.all('devices'), mockService.all('users'), mockService.all('approval-center'), mockService.all('payments'), mockService.all('materials'), mockService.all('cross-region-activations'),
   ])
   const today = new Date().toISOString().slice(0, 10)
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
@@ -95,6 +96,10 @@ async function load() {
     todayUsers: userResult.data.filter((item) => item.createdAt.startsWith(today)).length,
     yesterdayUsers: userResult.data.filter((item) => item.createdAt.startsWith(yesterday)).length,
     todayDevices: deviceResult.data.filter((item) => item.createdAt.startsWith(today)).length,
+    approvalsPending: approvalResult.data.filter((item) => item.status === 'pending').length,
+    financePending: paymentResult.data.filter((item) => item.status === 'verifying').length + materialResult.data.filter((item) => item.purchaseStage === 'finance_confirmation').length,
+    shipmentsPending: materialResult.data.filter((item) => item.purchaseStage === 'warehouse_fulfillment').length,
+    crossRegionPending: crossRegionResult.data.filter((item) => item.status === 'pending').length,
   }
   tasks.value = repairResult.rows
   sourceUsers.value = userResult.data
@@ -132,7 +137,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', resize); distributi
 
     <div class="dashboard-primary-grid">
       <section class="surface overview-panel">
-        <div class="section-head"><div><h2>数据概览</h2><p>{{ periodLabel }}核心业务变化，按创建/完成时间统计</p></div><el-select v-model="period" aria-label="统计周期" style="width:110px"><el-option label="今日" value="today" /><el-option label="近 7 天" value="7d" /><el-option label="近 30 天" value="30d" /></el-select></div>
+        <div class="section-head"><div><h2>运营待办</h2><p>审批、财务、仓库与异常处理口径互不重复</p></div></div>
         <div class="overview-metric-grid">
           <article v-for="metric in overviewMetrics" :key="metric.label" class="overview-metric" :data-tone="metric.tone">
             <span>{{ metric.label }}</span><div><strong>{{ metric.value }}</strong><small>{{ metric.unit }}</small></div><p>数据口径 <b>{{ metric.delta }}</b></p>
@@ -152,7 +157,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', resize); distributi
 
     <section class="surface dashboard-quick-section">
       <div class="section-head"><div><h2>快捷入口</h2><p>按当前账号权限展示</p></div></div>
-      <div class="quick-grid"><RouterLink v-for="item in quickEntries" :key="item.route" :to="`/${item.route}`" :data-tone="item.tone"><div><strong>{{ item.label }}</strong><span v-if="item.route === 'repairs' && counts.repairsPending" class="quick-count">{{ counts.repairsPending }}</span><p>{{ item.description }}</p><span class="quick-arrow"><AppIcon name="arrow-right" :size="14" /></span></div><AppIcon :name="item.icon" variant="feature" :size="64" /></RouterLink></div>
+      <div class="quick-grid"><RouterLink v-for="item in quickEntries" :key="item.route" :to="`/${item.route}`" :data-tone="item.tone"><div><strong>{{ item.label }}</strong><span v-if="item.route === 'repairs' && counts.repairsPending" class="quick-count">{{ counts.repairsPending }}</span><span v-else-if="item.route === 'approval-center' && counts.approvalsPending" class="quick-count">{{ counts.approvalsPending }}</span><p>{{ item.description }}</p><span class="quick-arrow"><AppIcon name="arrow-right" :size="14" /></span></div><AppIcon :name="item.icon" variant="feature" :size="64" /></RouterLink></div>
     </section>
   </section>
 </template>

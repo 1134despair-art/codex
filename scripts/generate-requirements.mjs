@@ -52,7 +52,7 @@ const registrations = [
   [160, 162, '换 SN 管理', '/sn-replacement', 'sn-replacement:view', 'UT-SN-TRANSACTION', 'SN 归属与唯一性校验、SN-1 归档及换绑事务断言'],
   [163, 165, '售后转移', '/service-transfer', 'service-transfer:view', 'UT-SERVICE-TRANSFER', '原代理发起、目标代理确认和设备售后归属同步断言'],
   [166, 168, '物流接口边界', '/couriers', 'couriers:view', 'UT-STATIC-EXTERNAL-BOUNDARY', '快递接口、五分钟缓存与异常降级均明确标识为本地模拟'],
-  [169, 170, '支付配置', '/payment-settings', 'payment-settings:view', 'UT-STATIC-EXTERNAL-BOUNDARY', '支付渠道开关和加密配置本地持久化断言'],
+  [169, 170, '支付配置', '/payment-settings', 'payment-settings:view', 'UT-STATIC-EXTERNAL-BOUNDARY', '供应商收款二维码配置、启停和本地持久化断言'],
   [171, 171, '支付订单', '/payments', 'payments:view', 'UT-READONLY-AUDIT', '支付订单查询、渠道、状态、时间和只读审计断言'],
   [172, 175, '质保规则', '/warranty', 'warranty:view', 'UT-CONFIG-CRUD', '产品类型、人工费月数、物料质保月数及保存权限断言'],
   [176, 178, '审批流程', '/approval-flow', 'approval-flow:view', 'E2E-APPROVAL-FLOW-CRUD', '审核层级、节点人员和流程配置持久化断言'],
@@ -106,12 +106,12 @@ const records = sources.map(({ excelRow, source }) => {
   const status = semanticModule === '基础设施' ? '后端豁免' : '通过'
   const code = route === '-' ? 'INFRA' : route.replace(/^\//, '').replace(/[^a-z]/g, '').toUpperCase()
   const meetingOverride = excelRow === 38 ? {
-    pageLocation: '客户端航点保存策略（后台不可见）',
-    interaction: '用户选择保存到服务器时仅持久化关联数据；后台不展示航点坐标和列表',
-    simulationBoundary: 'Demo 只保存服务器同步元数据；本地航点不进入数据库，后台相关接口固定返回空列表',
-    service: 'mockService.related（后台隐私拦截）',
-    evidence: '用户详情只保留基本信息与绑定设备；v13→v14 迁移仅保留 serverSaved 航点且标记 adminVisible=false',
-    testId: 'UT-WAYPOINT-PRIVACY',
+    pageLocation: '用户详情 / 航点数据 / 航点列表',
+    interaction: '展示当前用户上传并保存到服务器的航点数据，按用户 ID 关联查询',
+    simulationBoundary: 'Demo 展示服务器保存的航点；本地未上传航点不进入后台数据库',
+    service: 'mockService.related（按 userId 查询服务器航点）',
+    evidence: '用户详情包含航点数据页签；仅展示 serverSaved 航点并按 userId 关联',
+    testId: 'UT-WAYPOINT-RELATION',
   } : {}
   return {
     id: `REQ-${code}-${String(excelRow).padStart(3, '0')}`,
@@ -149,7 +149,7 @@ const markdownRows = records.map((item) => `| ${item.id} | ${item.excelRow} | ${
 const markdownText = `# 鲨鱼妹妹后台 V3.2 需求登记覆盖\n\n> 说明：下方比例表示 213 条需求均已登记路由、交互、边界和测试编号，不等同于 213 条业务行为已全部通过。功能验收必须同时以对应单元测试、Playwright 流程和人工场景复核为准，禁止仅凭本表“通过”字段宣称交付完成。\n\n- 唯一基准：\`${sourceSheet}!${sourceRange}\`\n- 总需求：${summary.total}\n- 前端通过：${summary.passed}/${summary.frontend}\n- 后端豁免：${summary.backendExempt}\n- 登记完整率：100%\n- 行为回归：318 项单元测试（v13）\n- 本轮重点闭环：项目新增与历史、设备子物料、质保起算、组织审批、离线远控、售后转移联动、APPID\n\n| 需求 ID | Excel 行 | Excel 一级模块 | 系统语义模块 | 路由 | 状态 | 测试编号 |\n|---|---:|---|---|---|---|---|\n${markdownRows}\n`
 const currentMarkdownText = markdownText
   .replace('318 项单元测试（v13）', '323 项单元测试（v14）')
-  .replace('项目新增与历史、设备子物料、质保起算、组织审批、离线远控、售后转移联动、APPID', '跨区安装审核、双重身份、服务器航点隐私、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置')
+  .replace('项目新增与历史、设备子物料、质保起算、组织审批、离线远控、售后转移联动、APPID', '跨区安装审核、双重身份、服务器航点按用户展示、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置')
 
 const targets = [
   [join(projectRoot, 'src', 'config', 'requirement-manifest.ts'), manifestText],

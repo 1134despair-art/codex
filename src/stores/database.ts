@@ -116,15 +116,27 @@ function normalizeRoles(records: Record<string, EntityRecord[]>, preservePermiss
   return roleIdRemap
 }
 
+function normalizeProductPurchasePermissions(records: Record<string, EntityRecord[]>) {
+  for (const role of records.roles || []) {
+    const permissions = Array.isArray(role.permissions) ? role.permissions.map(String) : []
+    const additions: string[] = []
+    if (permissions.includes('materials:view')) additions.push('product-purchase:view')
+    if (permissions.includes('materials:create')) additions.push('product-purchase:create')
+    if (permissions.includes('materials:export')) additions.push('product-purchase:export')
+    role.permissions = [...new Set([...permissions, ...additions])]
+    role.permissionCount = (role.permissions as string[]).length
+  }
+}
+
 function normalizeDealers(records: Record<string, EntityRecord[]>) {
   records.dealers ||= []
-  const canonical: Record<string, { organizationId: string; domain: 'cn' | 'global'; parentDealerId?: string }> = {
-    '深圳海航设备有限公司': { organizationId: 'dealer-t1-sz', domain: 'cn' },
-    '厦门蓝湾船舶服务': { organizationId: 'dealer-t2-xm', domain: 'cn', parentDealerId: 'dealer-t1-sz' },
-    'Pacific Marine Systems': { organizationId: 'dealer-t1-us', domain: 'global' },
-    'Harbour Tech Southampton': { organizationId: 'dealer-t2-uk', domain: 'global', parentDealerId: 'dealer-t1-us' },
-    '宁波远洋机电': { organizationId: 'dealer-t2-nb', domain: 'cn', parentDealerId: 'dealer-t1-sz' },
-    '青岛远海船舶设备': { organizationId: 'dealer-t1-qd', domain: 'cn' },
+  const canonical: Record<string, { organizationId: string; domain: 'cn' | 'global'; region: string; parentDealerId?: string }> = {
+    '深圳海航设备有限公司': { organizationId: 'dealer-t1-sz', domain: 'cn', region: '中国 · 广东' },
+    '厦门蓝湾船舶服务': { organizationId: 'dealer-t2-xm', domain: 'cn', region: '中国 · 福建', parentDealerId: 'dealer-t1-sz' },
+    'Pacific Marine Systems': { organizationId: 'dealer-t1-us', domain: 'global', region: '美国 · California' },
+    'Harbour Tech Southampton': { organizationId: 'dealer-t2-uk', domain: 'global', region: '英国 · Southampton', parentDealerId: 'dealer-t1-us' },
+    '宁波远洋机电': { organizationId: 'dealer-t2-nb', domain: 'cn', region: '中国 · 浙江', parentDealerId: 'dealer-t1-sz' },
+    '青岛远海船舶设备': { organizationId: 'dealer-t1-qd', domain: 'cn', region: '中国 · 山东' },
   }
   for (const dealer of records.dealers) {
     if (dealer.account === 'service@qingdao-marine.cn') dealer.account = 'service@qingdao.cn'
@@ -135,6 +147,7 @@ function normalizeDealers(records: Record<string, EntityRecord[]>) {
     dealer.ownerId = fixed.organizationId
     dealer.owner = dealer.name
     dealer.domain = fixed.domain
+    dealer.region = fixed.region
     dealer.parentDealerId = fixed.parentDealerId || ''
     if (dealer.name === '青岛远海船舶设备' && dealer.category === '注册申请') {
       dealer.category = '一级'
@@ -316,37 +329,36 @@ function normalizeApprovalFlows(records: Record<string, EntityRecord[]>) {
     if (text.includes('售后') || text.includes('转移')) return 'service-transfer'
     return 'materials'
   }
-  for (const flow of records['approval-flow']) {
-    const menuKey = inferMenuKey(flow)
-    flow.category = '流程配置'
-    flow.menuKey = menuKey
-    flow.menuLabel = approvalMenuLabels[menuKey]
-    flow.flowType = menuKey
-    flow.flowTypeLabel = approvalMenuLabels[menuKey]
+  const definitions: Record<string, { name: string; businessFlow: string; levels: string; members: EntityRecord[] }> = {
+    materials: { name: '物料采购审批流程', businessFlow: '申请 → 销售确认 → 研发确认 → 导入生产 → 财务核实 → 仓库发货 → 收货确认', levels: '一级 → 平台', members: [tier1, platform].filter(Boolean) as EntityRecord[] },
+    warehouse: { name: '仓库调货审批流程', businessFlow: '调货申请 → 审核 → 调货完成', levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
+    'service-transfer': { name: '售后转移费用审批流程', businessFlow: '发起转移 → 接收方确认 → 费用审核（如有） → 完成', levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
   }
-  const defaults: Record<string, { levels: string; members: EntityRecord[] }> = {
-    materials: { levels: '一级 → 平台', members: [tier1, platform].filter(Boolean) as EntityRecord[] },
-    warehouse: { levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
-    'service-transfer': { levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
-  }
+  const normalized: EntityRecord[] = []
   for (const menuKey of Object.keys(approvalMenuLabels)) {
-    let flow = records['approval-flow'].find((item) => item.menuKey === menuKey)
+    const candidates = records['approval-flow'].filter((item) => inferMenuKey(item) === menuKey)
+    let flow = candidates.find((item) => item.status === 'normal') || candidates[0]
     if (!flow) {
       flow = appendEntity(records, 'approval-flow', {
         name: `${approvalMenuLabels[menuKey]}审批流程`, category: '流程配置', menuKey, status: 'normal', ownerId: 'platform', owner: '平台中心', domain: 'cn',
       })
     }
-    const defaultConfig = defaults[menuKey]
+    const defaultConfig = definitions[menuKey]
     flow.levels ||= defaultConfig.levels
     const configuredIds = configuredApprovalIds(flow)
     const legacyIds = Array.isArray(flow.members) ? flow.members.map(String).filter((id) => activeAccounts.some((item) => item.id === id)) : []
     const ids = configuredIds.length ? configuredIds : legacyIds.length ? legacyIds : defaultConfig.members.map((item) => item.id)
     const members = [...new Set(ids)].map((id) => activeAccounts.find((item) => item.id === id)).filter(Boolean) as EntityRecord[]
     flow.category = '流程配置'
+    flow.name = defaultConfig.name
     flow.menuKey = menuKey
     flow.menuLabel = approvalMenuLabels[menuKey]
     flow.flowType = menuKey
     flow.flowTypeLabel = approvalMenuLabels[menuKey]
+    flow.businessFlow = defaultConfig.businessFlow
+    flow.status = 'normal'
+    flow.ownerId = 'platform'
+    flow.owner = '平台中心'
     if (flow.levels === '二级 → 一级 → 平台') {
       flow.level1ApproverId = members.find((item) => item.roleKey === 'tier2')?.id || tier2?.id || ''
       flow.level2ApproverId = members.find((item) => item.roleKey === 'tier1')?.id || tier1?.id || ''
@@ -361,11 +373,9 @@ function normalizeApprovalFlows(records: Record<string, EntityRecord[]>) {
     const orderedIds = configuredApprovalIds(flow)
     flow.members = orderedIds
     flow.memberNames = orderedIds.map((id) => activeAccounts.find((item) => item.id === id)).filter(Boolean).map((item) => item!.displayName || item!.name).join('、') || '-'
+    normalized.push(flow)
   }
-  for (const menuKey of Object.keys(approvalMenuLabels)) {
-    const enabled = records['approval-flow'].filter((item) => item.menuKey === menuKey && item.status === 'normal')
-    enabled.slice(1).forEach((flow) => { flow.status = 'disabled' })
-  }
+  records['approval-flow'] = normalized
 }
 
 function appendEntity(records: Record<string, EntityRecord[]>, moduleKey: string, payload: Partial<EntityRecord>) {
@@ -521,6 +531,23 @@ function normalizeMeetingAdjustments(records: Record<string, EntityRecord[]>) {
   records['purchase-items'] ||= []
   records['billing-items'] ||= []
 
+  for (const firmware of records.ota || []) {
+    const legacyIdentity = deviceIdentity(firmware.deviceType)
+    const product = records['product-catalog'].find((item) => item.descriptor === firmware.deviceType || item.deviceModel === firmware.compatibleModel)
+      || records['product-catalog'].find((item) => item.deviceModel === legacyIdentity.deviceModel)
+    const normalize = (value: unknown, fallback: unknown) => Array.isArray(value) && value.length ? [...new Set(value.map(String))] : fallback ? [String(fallback)] : []
+    firmware.applicableProductNames = normalize(firmware.applicableProductNames, product?.name)
+    firmware.applicableDeviceTypes = normalize(firmware.applicableDeviceTypes, product?.deviceType)
+    firmware.applicableDeviceModels = normalize(firmware.applicableDeviceModels, product?.deviceModel)
+    firmware.applicableProductSummary = (firmware.applicableProductNames as string[]).join('、')
+    firmware.applicableTypeSummary = (firmware.applicableDeviceTypes as string[]).join('、')
+    firmware.applicableModelSummary = (firmware.applicableDeviceModels as string[]).join('、')
+    delete firmware.deviceType
+    delete firmware.compatibleModel
+    delete firmware.releaseScope
+  }
+  for (const material of records.materials || []) if (material.warrantyResult === '已过期') material.warrantyResult = '已过期，需自费'
+
   const superAdmin = records.admins?.find((item) => item.account === 'admin@shark.cn') || records.admins?.find((item) => item.category === '平台')
   records.admins?.forEach((item) => { item.isSuperAdmin = item.id === superAdmin?.id; item.accountLevel = item.isSuperAdmin ? '超级管理员' : '普通管理员' })
   records['auth-accounts']?.forEach((item) => { item.isSuperAdmin = item.account === superAdmin?.account })
@@ -615,16 +642,22 @@ function normalizeV14Adjustments(records: Record<string, EntityRecord[]>) {
 
   const users = records.users || []
   for (const dealer of records.dealers || []) {
-    const user = users.find((item) => item.id === dealer.linkedUserId || item.account === dealer.account)
-    if (!user) continue
-    dealer.linkedUserId = user.id
-    dealer.linkedUserName = user.name
-    const links = [{ subjectType: 'user', subjectId: user.id }, { subjectType: 'dealer', subjectId: dealer.id }]
-    const capabilities = ['user', 'dealer']
-    user.linkedDealerId = dealer.id
-    user.identityCapabilities = capabilities
-    for (const account of records['auth-accounts'] || []) if (account.subjectId === dealer.id || account.account === dealer.account) Object.assign(account, { linkedUserId: user.id, subjectLinks: links, capabilities })
-    for (const account of records['user-auth-accounts'] || []) if (account.subjectId === user.id || account.account === user.account) Object.assign(account, { linkedDealerId: dealer.id, subjectLinks: links, capabilities })
+    delete dealer.linkedUserId
+    delete dealer.linkedUserName
+  }
+  for (const user of records.users || []) {
+    delete user.linkedDealerId
+    delete user.identityCapabilities
+  }
+  for (const account of records['auth-accounts'] || []) if (account.subjectType === 'dealer') {
+    delete account.linkedUserId
+    account.subjectLinks = [{ subjectType: 'dealer', subjectId: account.subjectId }]
+    account.capabilities = ['dealer']
+  }
+  for (const account of records['user-auth-accounts'] || []) {
+    delete account.linkedDealerId
+    account.subjectLinks = [{ subjectType: 'user', subjectId: account.subjectId }]
+    account.capabilities = ['user']
   }
 
   const devices = records.devices || []
@@ -653,7 +686,32 @@ function normalizeV14Adjustments(records: Record<string, EntityRecord[]>) {
   }
 
   records.waypoints = (records.waypoints || []).filter((item) => item.serverSaved === true || item.storageMode === 'server')
-  for (const waypoint of records.waypoints) Object.assign(waypoint, { serverSaved: true, storageMode: 'server', adminVisible: false, syncStatus: waypoint.syncStatus || 'synced' })
+  for (const waypoint of records.waypoints) Object.assign(waypoint, { serverSaved: true, storageMode: 'server', adminVisible: true, syncStatus: waypoint.syncStatus || 'synced' })
+  const waypointLocations = ['深圳湾航道', '珠江口外锚地', '大鹏湾作业区']
+  for (const [userIndex, user] of users.entries()) {
+    if (records.waypoints.some((item) => item.userId === user.id)) continue
+    for (const index of [0, 1, 2]) {
+      const device = devices[(userIndex + index) % Math.max(devices.length, 1)]
+      appendEntity(records, 'waypoints', {
+        id: `waypoint-${user.id}-${index}`,
+        code: `WPT-${String(user.code).replace(/[^A-Za-z0-9]/g, '')}-${index + 1}`,
+        name: `航点 ${index + 1}`,
+        userId: user.id,
+        deviceSN: device?.code || '-',
+        recordedAt: `2026-08-${String(Math.min(28, userIndex * 3 + index + 1)).padStart(2, '0')}T08:30:00.000Z`,
+        coordinates: `${(22.52 + userIndex * 0.03 + index * 0.01).toFixed(2)}, ${(114.05 + index * 0.04).toFixed(2)}`,
+        location: waypointLocations[index],
+        serverSaved: true,
+        storageMode: 'server',
+        adminVisible: true,
+        syncStatus: 'synced',
+        status: 'normal',
+        ownerId: user.ownerId,
+        owner: user.owner,
+        domain: user.domain,
+      })
+    }
+  }
 
   for (const replacement of records['replacement-records'] || []) {
     if (replacement.repairId) continue
@@ -754,7 +812,7 @@ function normalizeProcurementRecords(records: Record<string, EntityRecord[]>) {
 function normalizeV15Adjustments(records: Record<string, EntityRecord[]>) {
   const headquartersRole = records.roles?.find((item) => item.roleKey === 'custom' && item.name === '总部售后')
   if (headquartersRole) {
-    const requiredPermissions = ['approval-center:view', 'approval-center:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view', 'warehouse:export', 'materials:finance-confirm', 'materials:purchase-ship']
+    const requiredPermissions = ['approval-center:view', 'approval-center:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view', 'warehouse:export', 'purchase-shipping:view', 'purchase-shipping:export', 'materials:start-production', 'materials:finance-confirm', 'materials:purchase-ship', 'materials:confirm-purchase-receipt', 'issuance:confirm-receipt', 'payments:view', 'payments:finance-verify', 'payments:export', 'cross-region-activations:resolve']
     const permissions = Array.isArray(headquartersRole.permissions) ? headquartersRole.permissions.map(String) : []
     const mergedPermissions = [...new Set([...permissions, ...requiredPermissions])]
     headquartersRole.permissions = mergedPermissions
@@ -763,6 +821,31 @@ function normalizeV15Adjustments(records: Record<string, EntityRecord[]>) {
   records.warehouses ||= []
   records['warehouse-locations'] ||= []
   records['purchase-fulfillments'] ||= []
+  records['payment-settings'] ||= []
+  records['payment-settings'] = records['payment-settings'].filter((item) => item.category === '供应商收款码')
+  for (const item of records['payment-settings']) {
+    item.channel = '二维码支付'
+    item.name = `${String(item.supplierName || item.name).replace(/\s*[·-]\s*(微信支付|支付宝|二维码支付).*$/, '')}收款码`
+    if (/微信支付|支付宝/.test(String(item.summary || ''))) item.summary = `${item.accountName || '待完善收款户名'} · 二维码收款`
+  }
+
+  const supplierQrSeeds = [
+    { code: 'QR-SUP-001', name: '深圳海洋设备供应商收款码', supplierName: '深圳海洋设备供应商', channel: '二维码支付', accountName: '深圳海洋设备有限公司' },
+    { code: 'QR-SUP-002', name: '华南备件供应商收款码', supplierName: '华南备件供应商', channel: '二维码支付', accountName: '华南备件服务中心' },
+  ]
+  for (const supplier of supplierQrSeeds) {
+    if (records['payment-settings'].some((item) => item.category === '供应商收款码' && item.code === supplier.code)) continue
+    appendEntity(records, 'payment-settings', {
+      ...supplier,
+      category: '供应商收款码',
+      qrCodeData: '',
+      summary: '等待上传正式收款二维码',
+      status: 'normal',
+      owner: '平台中心',
+      ownerId: 'platform',
+      domain: 'cn',
+    })
+  }
 
   const warehouseSeeds: Array<{ code: string; name: string; category: string; region: string; domain: DataDomain }> = [
     { code: 'WHS-CN-001', name: '平台中心仓', category: '中心仓', region: '中国 · 深圳', domain: 'cn' },
@@ -856,22 +939,33 @@ function normalizeV15Adjustments(records: Record<string, EntityRecord[]>) {
     request.initiatedAt ||= request.applyTime || request.createdAt
     request.contractStatus ||= '待确认'
     request.deliveryStatus ||= request.status === 'shipped' || request.status === 'completed' ? '已发货' : '待处理'
-    if (request.status === 'shipped' || request.status === 'completed') {
+    const currentStage = String(request.purchaseStage || '')
+    if (currentStage === 'received' || request.status === 'completed') {
+      request.purchaseStage = 'received'
+      request.purchaseStageLabel = '已收货'
+      request.deliveryStatus = '已收货'
+    } else if (request.status === 'shipped') {
       request.purchaseStage = 'shipped'
       request.purchaseStageLabel = '已发货'
-    } else if (request.status === 'approved' && request.paymentStatus === '已登记') {
+    } else if (['sales_confirmation', 'rd_confirmation', 'production', 'finance_confirmation', 'warehouse_fulfillment'].includes(currentStage)) {
+      request.purchaseStageLabel = ({ sales_confirmation: '待销售确认', rd_confirmation: '待研发确认', production: '待导入生产', finance_confirmation: '待财务核实', warehouse_fulfillment: '待仓库发货' } as Record<string, string>)[currentStage]
+    } else if (request.status === 'approved' && (request.paymentStatus === '已登记' || request.warehouseDecision === 'release')) {
       request.purchaseStage = 'warehouse_fulfillment'
       request.purchaseStageLabel = '待仓库发货'
     } else if (request.status === 'approved') {
-      request.purchaseStage = 'finance_confirmation'
-      request.purchaseStageLabel = '待财务确认'
+      request.purchaseStage = 'production'
+      request.purchaseStageLabel = '待导入生产'
     } else if (request.status === 'rejected') {
       request.purchaseStage = 'rejected'
       request.purchaseStageLabel = '已拒绝'
     } else {
-      request.purchaseStage = 'business_confirmation'
-      request.purchaseStageLabel = '待业务确认'
+      request.purchaseStage = currentStage === 'rd_confirmation' ? 'rd_confirmation' : 'sales_confirmation'
+      request.purchaseStageLabel = request.purchaseStage === 'rd_confirmation' ? '待研发确认' : '待销售确认'
     }
+    const instance = records['approval-instances']?.find((item) => item.id === request.approvalInstanceId || item.subjectId === request.id)
+    const steps = (records['approval-steps'] || []).filter((item) => item.instanceId === instance?.id).sort((left, right) => Number(left.sequence) - Number(right.sequence))
+    if (steps[0]) steps[0].name = '销售确认'
+    for (const step of steps.slice(1)) step.name = '研发确认'
   }
 }
 
@@ -952,11 +1046,45 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
   records.payments ||= []
   records['expense-records'] ||= []
   records['billing-items'] ||= []
+  records['payment-transactions'] ||= []
+  const legacyGatewayChannels = new Set(['微信支付', '支付宝', 'PayPal', 'Apple Pay', 'Google Pay'])
+  for (const transaction of records['payment-transactions']) {
+    transaction.channel = '二维码支付'
+    if (transaction.status === 'paid') transaction.status = 'verified'
+  }
   for (const payment of records.payments) {
     payment.sourceType ||= 'app'
     payment.sourceLabel ||= payment.sourceType === 'platform' ? '平台费用登记' : 'APP 支付'
+    if (legacyGatewayChannels.has(String(payment.category))) payment.category = '二维码支付'
+    payment.channel = '二维码支付'
     payment.businessType ||= payment.sourceType === 'platform' ? payment.category : 'APP 服务订单'
     payment.channel ||= payment.category
+    payment.paymentInstruction ||= '扫描订单对应的供应商收款二维码，按订单应付金额付款后上传截图；金额与订单由财务人工核实。'
+    payment.orderAmount = Number(payment.orderAmount || payment.amount || 0)
+    payment.paidAmount = Number(payment.paidAmount ?? (['paid', 'verified'].includes(String(payment.status)) ? payment.orderAmount : 0))
+    payment.remainingAmount = Math.max(0, Math.round((Number(payment.orderAmount) - Number(payment.paidAmount)) * 100) / 100)
+    payment.paymentCount = Number(payment.paymentCount || (Number(payment.paidAmount) > 0 ? 1 : 0))
+    if (payment.status === 'paid') payment.status = 'verified'
+    if (payment.status === 'partial' || payment.status === 'failed' || payment.status === 'refunded') payment.status = 'pending'
+    if (payment.status === 'verified' && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
+      appendEntity(records, 'payment-transactions', {
+        id: `payment-transaction-${payment.id}-initial`,
+        code: `PAY-${String(payment.code || payment.id).replace(/[^A-Za-z0-9]/g, '').slice(-14)}`,
+        name: `${payment.name}付款记录`,
+        paymentId: payment.id,
+        subjectId: payment.subjectId,
+        subjectCode: payment.subjectCode,
+        amount: Number(payment.paidAmount),
+        channel: payment.channel,
+        paymentReference: payment.paymentReference || '',
+        paidAt: payment.paidAt || payment.createdAt,
+        operator: payment.recordedBy || '系统迁移',
+        status: 'verified',
+        owner: payment.owner,
+        ownerId: payment.ownerId,
+        domain: payment.domain,
+      })
+    }
   }
 
   for (const expense of records['expense-records']) {
@@ -970,7 +1098,7 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
       sourceType: 'platform',
       sourceLabel: '平台费用登记',
       businessType: expense.category,
-      channel: expense.paymentMethod || '线下登记',
+      channel: '二维码支付',
       amount: Number(expense.amount || 0),
       currency: expense.currency || 'CNY',
       account: subject?.dealer || subject?.owner || expense.owner || '平台业务',
@@ -981,7 +1109,7 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
       subjectCode: expense.subjectCode || subject?.code || '',
       subjectModule: sourceModule,
       recordedBy: expense.operator || '平台账单中心',
-      status: 'paid',
+      status: 'verified',
       owner: subject?.owner || expense.owner,
       ownerId: subject?.ownerId || expense.ownerId,
       domain: subject?.domain || expense.domain,
@@ -989,6 +1117,23 @@ function normalizePlatformBilling(records: Record<string, EntityRecord[]>) {
   }
 
   for (const payment of records.payments) {
+    payment.orderAmount = Number(payment.orderAmount || payment.amount || 0)
+    payment.channel = '二维码支付'
+    payment.paymentInstruction ||= '扫描订单对应的供应商收款二维码，按订单应付金额付款后上传截图；金额与订单由财务人工核实。'
+    payment.paidAmount = Number(payment.paidAmount ?? (['paid', 'verified'].includes(String(payment.status)) ? payment.orderAmount : 0))
+    payment.remainingAmount = Math.max(0, Math.round((Number(payment.orderAmount) - Number(payment.paidAmount)) * 100) / 100)
+    payment.paymentCount = Number(payment.paymentCount || (Number(payment.paidAmount) > 0 ? 1 : 0))
+    if (payment.status === 'paid') payment.status = 'verified'
+    if (payment.status === 'partial' || payment.status === 'failed' || payment.status === 'refunded') payment.status = 'pending'
+    if (payment.status === 'verified' && !records['payment-transactions'].some((item) => item.paymentId === payment.id)) {
+      appendEntity(records, 'payment-transactions', {
+        id: `payment-transaction-${payment.id}-initial`, code: `PAY-${String(payment.code || payment.id).replace(/[^A-Za-z0-9]/g, '').slice(-14)}`,
+        name: `${payment.name}付款记录`, paymentId: payment.id, subjectId: payment.subjectId, subjectCode: payment.subjectCode,
+        amount: Number(payment.paidAmount), channel: payment.channel, paymentReference: payment.paymentReference || '',
+        paidAt: payment.paidAt || payment.createdAt, operator: payment.recordedBy || '系统迁移', status: 'verified',
+        owner: payment.owner, ownerId: payment.ownerId, domain: payment.domain,
+      })
+    }
     if (records['billing-items'].some((item) => item.paymentId === payment.id)) continue
     const purchaseItems = payment.subjectModule === 'materials'
       ? (records['purchase-items'] || []).filter((item) => item.subjectId === payment.subjectId)
@@ -1402,6 +1547,7 @@ export function migrateDatabase(source?: { version?: number; records?: Record<st
   }
   const sourceVersion = Number(source?.version || 0)
   const roleIdRemap = normalizeRoles(seed.records, sourceVersion >= 8, sourceVersion > 0 && sourceVersion < 10)
+  normalizeProductPurchasePermissions(seed.records)
   if (sourceVersion > 0 && sourceVersion < 13) {
     const tier2Role = seed.records.roles.find((item) => item.roleKey === 'tier2')
     const permissions = Array.isArray(tier2Role?.permissions) ? tier2Role.permissions.map(String) : []
@@ -1427,7 +1573,7 @@ export function migrateDatabase(source?: { version?: number; records?: Record<st
   }
   seed.records.dealers = (seed.records.dealers || []).filter((item) => item.category !== '注册申请')
   seed.records['dealer-applications'] = []
-  seed.records['payment-settings'] = (seed.records['payment-settings'] || []).filter((item) => ['支付渠道', '商户配置'].includes(String(item.category)))
+  seed.records['payment-settings'] = (seed.records['payment-settings'] || []).filter((item) => item.category === '供应商收款码')
   seed.records['launch-settings'] ||= []
   if (!seed.records['launch-settings'].length) {
     appendEntity(seed.records, 'launch-settings', {
@@ -1449,20 +1595,6 @@ export function migrateDatabase(source?: { version?: number; records?: Record<st
       owner: '平台中心',
       ownerId: 'platform',
       domain: 'cn',
-    })
-  }
-  const requiredPaymentChannels = ['微信支付', '支付宝', 'PayPal', 'Apple Pay', 'Google Pay']
-  for (const [index, channel] of requiredPaymentChannels.entries()) {
-    if (seed.records['payment-settings'].some((item) => item.category === '支付渠道' && item.name === channel)) continue
-    appendEntity(seed.records, 'payment-settings', {
-      name: channel,
-      category: '支付渠道',
-      channel,
-      status: 'normal',
-      summary: index < 2 ? '国内用户支付方式' : '海外用户支付方式',
-      owner: '平台中心',
-      ownerId: 'platform',
-      domain: index < 2 ? 'cn' : 'global',
     })
   }
   if ((source?.version || 0) < 5) {

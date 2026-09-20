@@ -42,6 +42,26 @@ describe('database store', () => {
     expect(new Set(second.records['device-components'].map((item) => item.serialNumber)).size).toBe(second.records['device-components'].length)
   })
 
+  it('repairs canonical dealer regions during migration', () => {
+    const current = migrateDatabase()
+    const expectedRegions: Record<string, string> = {
+      '深圳海航设备有限公司': '中国 · 广东',
+      '厦门蓝湾船舶服务': '中国 · 福建',
+      'Pacific Marine Systems': '美国 · California',
+      'Harbour Tech Southampton': '英国 · Southampton',
+      '宁波远洋机电': '中国 · 浙江',
+      '青岛远海船舶设备': '中国 · 山东',
+    }
+    for (const dealer of current.records.dealers) {
+      if (expectedRegions[String(dealer.name)]) dealer.region = '错误区域'
+    }
+
+    const migrated = migrateDatabase(current)
+    for (const [name, region] of Object.entries(expectedRegions)) {
+      expect(migrated.records.dealers.find((dealer) => dealer.name === name)?.region).toBe(region)
+    }
+  })
+
   it('migrates v13 privacy and client configuration data into the v15 model', () => {
     const legacy = migrateDatabase()
     const user = legacy.records.users[0]
@@ -54,8 +74,11 @@ describe('database store', () => {
 
     const migrated = migrateDatabase({ version: 13, records: legacy.records })
     expect(migrated.version).toBe(15)
-    expect(migrated.records.waypoints.map((item) => item.id)).toEqual(['server-waypoint'])
-    expect(migrated.records.waypoints[0]).toMatchObject({ serverSaved: true, storageMode: 'server', adminVisible: false })
+    expect(migrated.records.waypoints.some((item) => item.id === 'local-waypoint')).toBe(false)
+    expect(migrated.records.waypoints.find((item) => item.id === 'server-waypoint')).toMatchObject({ userId: user.id, serverSaved: true, storageMode: 'server', adminVisible: true })
+    expect(migrated.records.users.every((item) => migrated.records.waypoints.some((waypoint) => waypoint.userId === item.id))).toBe(true)
+    const migratedAgain = migrateDatabase(migrated)
+    expect(migratedAgain.records.waypoints).toHaveLength(migrated.records.waypoints.length)
     expect(migrated.records['support-settings'].length).toBeGreaterThan(0)
     expect(migrated.records['after-sales-types'].length).toBeGreaterThan(0)
     expect((migrated.records['launch-settings'][0].onboardingPages as unknown[]).length).toBeGreaterThanOrEqual(3)

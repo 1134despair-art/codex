@@ -11,9 +11,10 @@ export const rolePermissions: Record<RoleKey, string[]> = {
     'messages:view', 'messages:reply', 'messages:forward', 'messages:escalate',
     'complaints:view', 'complaints:assign', 'complaints:reply', 'complaints:escalate', 'complaints:complete',
     'materials:view', 'materials:create', 'materials:approve', 'materials:reject',
+    'product-purchase:view', 'product-purchase:create', 'product-purchase:export',
     'material-catalog:view', 'couriers:view', 'sn-replacement:view', 'sn-replacement:create',
     'sn-replacement:process', 'service-transfer:view', 'service-transfer:create',
-    'service-transfer:process', 'service-transfer:confirm-transfer', 'warranty:view', 'warranty:create', 'warranty:edit', 'approval-flow:view', 'issuance:view', 'issuance:complete-replacement',
+    'service-transfer:process', 'service-transfer:confirm-transfer', 'warranty:view', 'warranty:create', 'warranty:edit', 'approval-flow:view', 'issuance:view', 'issuance:confirm-receipt', 'issuance:complete-replacement',
     'payments:view', 'users:export', 'dealers:export', 'projects:export', 'devices:export', 'warehouse:export',
     'repairs:export', 'messages:export', 'complaints:export', 'materials:export', 'material-catalog:export',
     'couriers:export', 'sn-replacement:export', 'service-transfer:export', 'warranty:export', 'approval-flow:export',
@@ -24,22 +25,23 @@ export const rolePermissions: Record<RoleKey, string[]> = {
     'product-catalog:view', 'product-catalog:export',
     'repairs:view', 'repairs:reply', 'repairs:complete', 'messages:view', 'messages:reply',
     'messages:escalate', 'complaints:view', 'complaints:reply', 'complaints:escalate', 'complaints:complete',
-    'materials:view', 'materials:create', 'material-catalog:view', 'couriers:view',
+    'materials:view', 'materials:create', 'product-purchase:view', 'product-purchase:create', 'product-purchase:export', 'material-catalog:view', 'couriers:view',
     'sn-replacement:view', 'sn-replacement:create', 'sn-replacement:process',
     'service-transfer:view', 'service-transfer:create', 'service-transfer:process', 'service-transfer:confirm-transfer',
-    'warranty:view', 'warranty:create', 'warranty:edit', 'issuance:view', 'issuance:complete-replacement', 'payments:view',
+    'warranty:view', 'warranty:create', 'warranty:edit', 'issuance:view', 'issuance:confirm-receipt', 'issuance:complete-replacement', 'payments:view',
     'projects:export', 'devices:export', 'warehouse:export', 'repairs:export', 'messages:export',
     'complaints:export', 'materials:export', 'material-catalog:export', 'couriers:export',
     'sn-replacement:export', 'service-transfer:export', 'warranty:export', 'issuance:export', 'payments:export',
   ],
   custom: [
     'dashboard:view', 'users:view', 'devices:view', 'repairs:*', 'messages:*',
-    'complaints:*', 'materials:view', 'materials:approve', 'materials:reject', 'materials:ship', 'materials:finance-confirm', 'materials:purchase-ship',
-    'material-catalog:view', 'couriers:view', 'issuance:view', 'issuance:complete-replacement', 'service-transfer:view', 'service-transfer:create',
-    'approval-center:view', 'approval-center:export', 'cross-region-activations:view', 'cross-region-activations:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view',
+    'complaints:*', 'materials:view', 'materials:approve', 'materials:reject', 'materials:ship', 'materials:start-production', 'materials:finance-confirm', 'materials:purchase-ship', 'materials:confirm-purchase-receipt',
+    'product-purchase:view', 'product-purchase:export',
+    'material-catalog:view', 'couriers:view', 'issuance:view', 'issuance:confirm-receipt', 'issuance:complete-replacement', 'service-transfer:view', 'service-transfer:create',
+    'approval-center:view', 'approval-center:export', 'cross-region-activations:view', 'cross-region-activations:resolve', 'cross-region-activations:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view', 'purchase-shipping:view', 'purchase-shipping:export',
     'product-catalog:view', 'product-catalog:export',
     'service-transfer:process', 'service-transfer:approve-transfer-fee', 'service-transfer:reject-transfer-fee',
-    'users:export', 'devices:export', 'repairs:export', 'messages:export', 'complaints:export',
+    'payments:view', 'payments:finance-verify', 'payments:export', 'users:export', 'devices:export', 'repairs:export', 'messages:export', 'complaints:export',
     'materials:export', 'material-catalog:export', 'couriers:export', 'issuance:export', 'service-transfer:export', 'warehouse:export',
   ],
 }
@@ -90,7 +92,8 @@ const actionAliases: Record<string, string> = {
 
 export function actionPermission(moduleKey: string, actionKey: string) {
   if (actionKey === 'detail') return `${moduleKey}:view`
-  return `${moduleKey}:${actionAliases[actionKey] || actionKey}`
+  const actionModule = moduleKey === 'product-purchase' ? 'materials' : moduleKey
+  return `${actionModule}:${actionAliases[actionKey] || actionKey}`
 }
 
 export function hasActionPermission(permissions: string[], moduleKey: string, actionKey: string) {

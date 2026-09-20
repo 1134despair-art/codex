@@ -50,7 +50,7 @@ describe('2026-09-01 meeting backend requirements', () => {
       summary: '客户会议采购全链路验证',
     })
     expect(created.code, created.msg).toBe(200)
-    expect(created.data).toMatchObject({ purchaseStage: 'business_confirmation', purchaseStageLabel: '待业务确认', initiatedBy: '李明', contractStatus: '待确认' })
+    expect(created.data).toMatchObject({ purchaseStage: 'sales_confirmation', purchaseStageLabel: '待销售确认', initiatedBy: '李明', contractStatus: '待确认' })
     expect((await mockService.action('materials', created.data!.id, 'finance-confirm', {})).code).toBe(403)
 
     auth.logout()
@@ -64,18 +64,23 @@ describe('2026-09-01 meeting backend requirements', () => {
     const platformPending = (await mockService.all('approval-center')).data.find((item) => item.subjectId === created.data!.id)!
     expect(platformPending.status).toBe('pending')
     const businessConfirmed = await mockService.action('approval-center', platformPending.id, 'approve-original', { reason: '平台业务确认' })
-    expect(businessConfirmed.data).toMatchObject({ status: 'approved', purchaseStage: 'finance_confirmation', purchaseStageLabel: '待财务确认' })
+    expect(businessConfirmed.data).toMatchObject({ status: 'approved', purchaseStage: 'production', purchaseStageLabel: '待导入生产' })
     expect((await mockService.action('materials', created.data!.id, 'purchase-ship', {})).code).toBe(409)
+
+    const produced = await mockService.action('materials', created.data!.id, 'start-production', {
+      productionBatchNo: 'PROD-MEETING-001', productionAt: '2026-09-02', reason: '已导入生产计划',
+    })
+    expect(produced.data).toMatchObject({ purchaseStage: 'finance_confirmation', purchaseStageLabel: '待财务核实' })
 
     const financed = await mockService.action('materials', created.data!.id, 'finance-confirm', {
       contractStatus: '已签订', contractNo: 'CONTRACT-MEETING-001', paidAmount: 88000,
-      paymentMethod: '对公转账', paymentReference: 'BANK-MEETING-001', paidAt: '2026-09-02', paymentNote: 'Demo 财务确认',
+      paymentProof: 'data:image/png;base64,AA==', paymentReference: 'BANK-MEETING-001', paidAt: '2026-09-02', paymentNote: 'Demo 财务核实', warehouseDecision: 'release',
     })
     expect(financed.code, financed.msg).toBe(200)
     expect(financed.data).toMatchObject({ status: 'approved', purchaseStage: 'warehouse_fulfillment', purchaseStageLabel: '待仓库发货', contractStatus: '已签订' })
 
     const shipped = await mockService.action('materials', created.data!.id, 'purchase-ship', {
-      selectedDevices: [inStock.code], warehouseId, deliveryMethod: '物流配送', deliveryReference: 'SF-MEETING-001', shippedAt: '2026-09-02', reason: '仓库确认发货',
+      selectedDevices: [inStock.code], warehouseId, courierId: database.records('couriers').find((item) => item.status === 'normal')!.id, trackingNo: 'SF-MEETING-001', shipmentPhoto: 'data:image/png;base64,BB==', shippedAt: '2026-09-02', reason: '仓库确认发货',
     })
     expect(shipped.code, shipped.msg).toBe(200)
     expect(shipped.data).toMatchObject({ status: 'shipped', purchaseStage: 'shipped', purchaseStageLabel: '已发货', deliveryStatus: '已发货' })
@@ -84,6 +89,7 @@ describe('2026-09-01 meeting backend requirements', () => {
     expect(database.records('ownership-history')).toContainEqual(expect.objectContaining({ deviceSN: inStock.code, operationType: '设备出库', toOwnerId: targetOwnerId }))
     expect(database.records('purchase-fulfillments')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, deviceSN: inStock.code, warehouseId }))
     expect(database.records('payments')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, amount: 88000, sourceType: 'platform' }))
+    expect((await mockService.action('materials', created.data!.id, 'confirm-purchase-receipt', { reason: '经销商已签收' })).data).toMatchObject({ status: 'completed', purchaseStage: 'received' })
   })
 
   it('redacts production and central warehouse fields for dealer views, relations and exports', async () => {

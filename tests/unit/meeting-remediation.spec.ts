@@ -50,10 +50,15 @@ describe('meeting gap remediation', () => {
 
   it('records OTA simulation results and rollback history', async () => {
     const database = useDatabaseStore()
-    const created = await mockService.create('ota', { name: '9.9.1', deviceType: '制冰机 CI-02', summary: '兼容范围测试', firmwareFile: 'ci-9.9.1.bin', forceUpdate: false, status: 'draft' })
+    const created = await mockService.create('ota', { name: '9.9.1', applicableProductNames: ['制冰机'], applicableDeviceTypes: ['制冷设备'], applicableDeviceModels: ['CI-02'], summary: '产品型号联动测试', firmwareFile: 'ci-9.9.1.bin', forceUpdate: false, status: 'draft' })
     expect(created.code, created.msg).toBe(200)
+    expect(created.data).toMatchObject({ applicableProductSummary: '制冰机', applicableTypeSummary: '制冷设备', applicableModelSummary: 'CI-02' })
+    expect(created.data).not.toHaveProperty('compatibleModel')
+    expect(created.data).not.toHaveProperty('releaseScope')
     expect((await mockService.action('ota', created.data!.id, 'publish', { reason: '发布演示' })).code).toBe(200)
-    expect(database.records('ota-results').some((item) => item.firmwareId === created.data!.id)).toBe(true)
+    const results = database.records('ota-results').filter((item) => item.firmwareId === created.data!.id)
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((item) => item.deviceModel === 'CI-02')).toBe(true)
     expect((await mockService.action('ota', created.data!.id, 'rollback', { targetVersion: '2.3.7', reason: '回归稳定版本' })).code).toBe(200)
     expect(database.records('ota-rollbacks').some((item) => item.firmwareId === created.data!.id)).toBe(true)
   })
@@ -126,29 +131,45 @@ describe('meeting gap remediation', () => {
     expect(navigation.data[stock.id]?.some((item) => item.label === '查看涉及设备')).toBe(false)
   })
 
-  it('links one login identity to both ordinary-user and dealer subjects', async () => {
-    const database = useDatabaseStore()
-    const user = database.records('users').find((item) => item.status === 'normal' && String(item.account).length <= 20)!
+  it('uses a controlled region dictionary and hides the parent field for tier-one dealers', async () => {
+    const fields = moduleConfigs.dealers.fields
+    expect(fields.some((field) => field.field === 'linkedUserId')).toBe(false)
+    expect(fields).toContainEqual(expect.objectContaining({ field: 'region', optionSource: 'dealer-regions', type: 'select' }))
+    expect(fields).toContainEqual(expect.objectContaining({ field: 'parentDealerId', visibleWhen: { field: 'tier', value: '二级' } }))
+    expect((await mockService.options('dealer-regions')).data.map((item) => item.value)).toContain('中国 · 海南')
+
     const created = await mockService.create('dealers', {
-      linkedUserId: user.id,
-      account: user.account,
+      account: 'area@dealer.cn',
       initialPassword: 'Dealer123!',
-      name: '双重身份演示经销商',
+      name: '区域字典演示经销商',
       region: '中国 · 海南',
       tier: '一级',
+      parentDealerId: 'dealer-t1-sz',
       defaultWarrantyYears: 2,
       phone: '13800138000',
       status: 'normal',
     })
     expect(created.code, created.msg).toBe(200)
-    expect(database.records('auth-accounts')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, linkedUserId: user.id, capabilities: ['user', 'dealer'] }))
-    expect(database.records('user-auth-accounts')).toContainEqual(expect.objectContaining({ subjectId: user.id, linkedDealerId: created.data!.id, capabilities: ['user', 'dealer'] }))
-    expect(database.records('users').find((item) => item.id === user.id)).toMatchObject({ linkedDealerId: created.data!.id, identityCapabilities: ['user', 'dealer'] })
+    expect(created.data).toMatchObject({ parentDealerId: '', parentDealer: '-', defaultWarrantyYears: 2 })
+    expect(await mockService.create('dealers', { account: 'bad@dealer.cn', initialPassword: 'Dealer123!', name: '无效地区经销商', region: '手动填写地区', tier: '一级', defaultWarrantyYears: 2, phone: '13800138001', status: 'normal' })).toMatchObject({ code: 422, msg: '请选择区域字典中的有效负责地区' })
+  })
+
+  it('calculates material warranty from the owning dealer and device activation date', async () => {
+    const database = useDatabaseStore()
+    const device = database.records('devices').find((item) => item.ownerId !== 'platform' && item.activation === 'activated')!
+    const dealer = database.records('dealers').find((item) => String(item.organizationId || item.ownerId) === device.ownerId)!
+    database.update('dealers', dealer.id, { defaultWarrantyYears: 1 })
+    database.update('devices', device.id, { activationDate: '2020-01-01' })
+    for (const rule of database.records('warranty').filter((item) => String(item.dealerId || item.ownerId) === device.ownerId && (item.productType === device.name || item.category === device.name))) database.update('warranty', rule.id, { status: 'disabled' })
+    const material = database.records('material-catalog').find((item) => item.status !== 'disabled')!
+    const resolved = await mockService.resolveFields('materials', { materialId: material.id, quantity: 1, deviceSN: device.code, category: '提前申请' })
+    expect(resolved.data).toMatchObject({ warrantyResult: '已过期，需自费', warrantyStartDate: '2020-01-01', warrantyUntil: '2021-01-01' })
   })
 
   it('keeps waypoints server-only and exposes document health plus after-sales configuration', () => {
     const database = useDatabaseStore()
-    expect(database.records('waypoints').every((item) => item.serverSaved === true && item.storageMode === 'server')).toBe(true)
+    expect(database.records('waypoints').every((item) => item.serverSaved === true && item.storageMode === 'server' && item.adminVisible === true)).toBe(true)
+    expect(database.records('users').every((user) => database.records('waypoints').some((item) => item.userId === user.id))).toBe(true)
     expect(database.records('support-settings').some((item) => item.status === 'normal' && item.servicePhone && item.serviceEmail)).toBe(true)
     expect(database.records('after-sales-types').every((item) => Array.isArray(item.requiredFields) && Number(item.responseSlaHours) > 0)).toBe(true)
     expect(database.records('faq-documents').some((item) => item.fileStatus === 'invalid' && item.status === 'disabled' && item.fileError)).toBe(true)
@@ -182,9 +203,13 @@ describe('meeting gap remediation', () => {
     auth.login('admin@shark.cn', 'Admin123!')
     expect((await mockService.action('materials', created.data!.id, 'approve', { reason: '平台终审' })).data?.status).toBe('approved')
 
+    expect((await mockService.action('materials', created.data!.id, 'start-production', {
+      productionBatchNo: 'MULTI-PROD-001', productionAt: '2026-08-21', reason: '导入生产',
+    })).code).toBe(200)
+
     const paidAmount = expected - 100
     const recorded = await mockService.action('materials', created.data!.id, 'record-expense', {
-      paidAmount, paymentMethod: '对公转账', paymentReference: 'MULTI-PURCHASE-001', paidAt: '2026-08-21',
+      paidAmount, paymentProof: 'data:image/png;base64,AA==', paymentReference: 'MULTI-PURCHASE-001', paidAt: '2026-08-21', warehouseDecision: 'release', paymentNote: '财务核实通过',
     })
     expect(recorded.code, recorded.msg).toBe(200)
     const payment = database.records('payments').find((item) => item.subjectId === created.data!.id)!
@@ -203,16 +228,16 @@ describe('meeting gap remediation', () => {
     const database = useDatabaseStore()
     const repair = database.records('repairs').find((item) => item.status === 'completed')!
     const response = await mockService.action('repairs', repair.id, 'record-bill', {
-      laborHours: 2.5, laborUnitPrice: 180, materialAmount: 360, adjustment: -10,
-      orderStatus: 'paid', paymentChannel: '线下登记', paymentReference: 'REPAIR-BILL-001', paidAt: '2026-08-21',
+      laborHours: 2.5, laborUnitPrice: 180, materialAmount: 360, adjustment: -10, billingNote: '维修费用待用户扫码支付',
     })
     expect(response.code, response.msg).toBe(200)
-    expect(response.data).toMatchObject({ billingAmount: 800, billingStatus: 'paid' })
+    expect(response.data).toMatchObject({ billingAmount: 800, billingStatus: 'pending' })
     const payment = database.records('payments').find((item) => item.subjectId === repair.id && item.subjectModule === 'repairs')!
     const items = database.records('billing-items').filter((item) => item.paymentId === payment.id)
     expect(items.map((item) => item.feeType).sort()).toEqual(['人工费', '物料费'].sort())
     expect(items.reduce((sum, item) => sum + Number(item.subtotal) + Number(item.adjustment), 0)).toBe(800)
-    expect((await mockService.action('repairs', repair.id, 'record-bill', { laborHours: 1, laborUnitPrice: 1, orderStatus: 'paid', paymentChannel: '线下登记', paidAt: '2026-08-21' })).code).toBe(409)
+    expect(payment).toMatchObject({ channel: '二维码支付', status: 'pending', orderAmount: 800, remainingAmount: 800 })
+    expect((await mockService.action('repairs', repair.id, 'record-bill', { laborHours: 1, laborUnitPrice: 1 })).code).toBe(409)
   })
 
   it('allows complaints to return to headquarters with an audit trail', async () => {

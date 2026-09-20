@@ -42,20 +42,25 @@ describe('RuoYi-compatible mock service', () => {
     expect((await mockService.exportRows('devices', { pageNum: 1, pageSize: 10, tab: 'all' })).code).toBe(200)
   })
 
-  it('keeps approval configurations independent by business menu', async () => {
+  it('keeps exactly three fixed approval templates and only edits approvers', async () => {
     const database = useDatabaseStore()
     const activeFlows = database.records('approval-flow').filter((item) => item.status === 'normal')
+    expect(database.records('approval-flow')).toHaveLength(3)
     expect(activeFlows.map((item) => item.menuKey).sort()).toEqual(['materials', 'service-transfer', 'warehouse'])
+    expect(activeFlows.every((item) => String(item.businessFlow).includes('→'))).toBe(true)
     const platformApproverId = (await mockService.options('platform-assignees')).data[0].value
-    const duplicate = await mockService.create('approval-flow', {
+    const forbiddenCreate = await mockService.create('approval-flow', {
       name: '重复调货流程', menuKey: 'warehouse', levels: '平台直接审核', platformApproverId, status: 'normal',
     })
-    expect(duplicate.code).toBe(422)
-    const disabled = await mockService.create('approval-flow', {
-      name: '调货备用流程', menuKey: 'warehouse', levels: '平台直接审核', platformApproverId, status: 'disabled',
+    expect(forbiddenCreate.code).toBe(403)
+    const warehouseFlow = activeFlows.find((item) => item.menuKey === 'warehouse')!
+    const updated = await mockService.update('approval-flow', warehouseFlow.id, {
+      name: '不允许修改名称', menuKey: 'materials', businessFlow: '不允许修改节点', status: 'disabled',
+      levels: '平台直接审核', platformApproverId,
     })
-    expect(disabled.code).toBe(200)
-    expect(disabled.data).toMatchObject({ menuKey: 'warehouse', menuLabel: '仓库设备（调货审批）' })
+    expect(updated.code).toBe(200)
+    expect(updated.data).toMatchObject({ name: '仓库调货审批流程', menuKey: 'warehouse', status: 'normal', levels: '平台直接审核', platformApproverId })
+    expect(updated.data?.businessFlow).toBe('调货申请 → 审核 → 调货完成')
   })
 
   it('filters stable relations with OR values inside a field and AND across fields', async () => {
@@ -137,30 +142,20 @@ describe('RuoYi-compatible mock service', () => {
   })
 
   it('generates business codes and keeps created records in their operational tab', async () => {
-    const accountId = (await mockService.options('platform-assignees')).data[0].value
-    const flow = await mockService.create('approval-flow', {
-      name: '自动化物料审批',
-      menuKey: 'materials',
-      levels: '平台直接审核',
-      platformApproverId: accountId,
-      status: 'disabled',
-    })
-    expect(flow.code, flow.msg).toBe(200)
-    expect(flow.data?.code).toMatch(/^APF-\d{11}$/)
-    expect(flow.data?.category).toBe('流程配置')
-    expect(flow.data?.flowTypeLabel).toBe('物料采购')
-    expect(flow.data?.menuLabel).toBe('物料采购')
-    const visible = await mockService.list('approval-flow', { pageNum: 1, pageSize: 20, tab: 'flows' })
-    expect(visible.rows.some((item) => item.id === flow.data?.id)).toBe(true)
-
     const warehouseDevice = `WH-AUTO-${Date.now()}`
+    const derived = await mockService.resolveFields('warehouse', { category: '在库', deviceModel: '制冰机 CI-02' })
+    expect(derived.data.deviceName).toBe('制冰机')
+    expect(moduleConfigs.warehouse.fields.find((field) => field.field === 'deviceName')).toMatchObject({ required: true })
+    expect(moduleConfigs.warehouse.fields.find((field) => field.field === 'deviceName')?.readonly).not.toBe(true)
     const inbound = await mockService.create('warehouse', {
-      category: '在库', deviceSN: warehouseDevice, deviceModel: '制冰机 CI-02', region: '中国',
+      category: '在库', deviceSN: warehouseDevice, deviceModel: '制冰机 CI-02', deviceName: '右舷制冰机', region: '中国',
     })
     expect(inbound.code, inbound.msg).toBe(200)
     expect(inbound.data?.code).toMatch(/^IN-\d{11}$/)
     const deviceRows = useDatabaseStore().records('devices').filter((item) => item.code === warehouseDevice)
     expect(deviceRows).toHaveLength(1)
+    expect(deviceRows[0].deviceName).toBe('右舷制冰机')
+    expect(inbound.data?.deviceName).toBe('右舷制冰机')
     expect(inbound.data?.quantity).toBe(1)
   })
 
@@ -237,7 +232,7 @@ describe('RuoYi-compatible mock service', () => {
     expect(database.records('warranty').every((item) => item.category !== '变更记录')).toBe(true)
     expect(database.records('couriers').every((item) => item.category === '快递公司')).toBe(true)
     expect(database.records('ota').every((item) => item.category === '固件版本')).toBe(true)
-    expect(database.records('payment-settings').every((item) => ['支付渠道', '商户配置'].includes(String(item.category)))).toBe(true)
+    expect(database.records('payment-settings').every((item) => item.category === '供应商收款码' && item.channel === '二维码支付')).toBe(true)
     expect(database.records('dealers').every((item) => item.category !== '注册申请')).toBe(true)
   })
 
@@ -311,8 +306,10 @@ describe('RuoYi-compatible mock service', () => {
 
   it('returns real relation data for detail tabs', async () => {
     const user = (await mockService.all('users')).data.find((item) => Number(item.deviceCount) > 0)!
-    expect(moduleConfigs.users.detailTabs.map((tab) => tab.key)).toEqual(['overview', 'devices'])
-    expect((await mockService.related('users', user.id, 'waypoints')).data).toEqual([])
+    expect(moduleConfigs.users.detailTabs.map((tab) => tab.key)).toEqual(['overview', 'devices', 'waypoints'])
+    const waypoints = (await mockService.related('users', user.id, 'waypoints')).data
+    expect(waypoints.length).toBeGreaterThan(0)
+    expect(waypoints.every((item) => item.userId === user.id && item.serverSaved === true && item.storageMode === 'server' && item.adminVisible === true)).toBe(true)
     const device = (await mockService.all('devices')).data[0]
     expect((await mockService.related('devices', device.id, 'ownership-history')).data.length).toBeGreaterThan(0)
     expect((await mockService.related('devices', device.id, 'firmware-history')).data.length).toBeGreaterThan(0)
@@ -337,7 +334,7 @@ describe('RuoYi-compatible mock service', () => {
     const material = (await mockService.all('materials')).data.find((item) => item.status === 'approved')!
     const issuanceBefore = (await mockService.all('issuance')).data.length
     const courierId = (await mockService.options('enabled-couriers')).data[0].value
-    const shipped = await mockService.action('materials', material.id, 'ship', { courierId, trackingNo: 'SF10000001' })
+    const shipped = await mockService.action('materials', material.id, 'ship', { courierId, trackingNo: 'SF10000001', shipmentPhoto: 'data:image/png;base64,AA==' })
     expect(shipped.data?.status).toBe('shipped')
     expect((await mockService.related('materials', material.id, 'logistics-records')).data[0].trackingNo).toBe('SF10000001')
     expect((await mockService.all('issuance')).data.length).toBe(issuanceBefore + 1)
@@ -385,7 +382,7 @@ describe('RuoYi-compatible mock service', () => {
     expect(outbound.data?.status).toBe('pending')
     expect(outbound.data?.quantity).toBe(2)
     expect(deviceOptions.every((option) => useDatabaseStore().records('devices').find((item) => item.code === option.value)?.inventoryStatus === 'in_stock')).toBe(true)
-    const processed = await mockService.action('warehouse', outbound.data!.id, 'process', { decision: 'outbound', reason: '确认出库' })
+    const processed = await mockService.action('warehouse', outbound.data!.id, 'confirm-outbound', { reason: '确认出库' })
     expect(processed.code, processed.msg).toBe(200)
     expect(processed.data?.status).toBe('completed')
     deviceOptions.forEach((option) => {
@@ -419,7 +416,7 @@ describe('RuoYi-compatible mock service', () => {
     expect(database.records('material-catalog').find((item) => item.id === catalog.value)?.stock).toBe(stockBefore)
 
     const courierId = (await mockService.options('enabled-couriers')).data[0].value
-    const shipped = await mockService.action('materials', created.data!.id, 'ship', { courierId, trackingNo: 'SF-MAT-AUTO-01' })
+    const shipped = await mockService.action('materials', created.data!.id, 'ship', { courierId, trackingNo: 'SF-MAT-AUTO-01', shipmentPhoto: 'data:image/png;base64,AA==' })
     expect(shipped.data?.status).toBe('shipped')
     expect(database.records('material-catalog').find((item) => item.id === catalog.value)?.stock).toBe(stockBefore - 2)
     expect(database.records('issuance').some((item) => item.sourceRequestId === created.data!.id && item.trackingNo === 'SF-MAT-AUTO-01')).toBe(true)
@@ -486,18 +483,23 @@ describe('RuoYi-compatible mock service', () => {
     expect(approved.data?.status).toBe('approved')
     expect((await mockService.action('materials', created.data!.id, 'ship', { courierId: 'none', trackingNo: 'none' })).code).toBe(409)
 
+    expect((await mockService.action('materials', created.data!.id, 'start-production', {
+      productionBatchNo: 'PROD-AUTO-001', productionAt: '2026-08-20', reason: '已导入生产计划',
+    })).code).toBe(200)
+
     const recorded = await mockService.action('materials', created.data!.id, 'record-expense', {
       actualUnitPrice: 66500,
       paidAmount: 133000,
-      paymentMethod: '对公转账',
+      paymentProof: 'data:image/png;base64,AA==',
       paymentReference: 'OFFLINE-20260820-001',
       paidAt: '2026-08-20',
-      paymentNote: '线下采购付款凭证已归档',
+      paymentNote: '二维码付款凭证已核实',
+      warehouseDecision: 'release',
     })
     expect(recorded.code, recorded.msg).toBe(200)
-    expect(recorded.data).toMatchObject({ amount: 133000, paidAmount: 133000, paymentStatus: '已登记', status: 'approved', purchaseStage: 'warehouse_fulfillment', purchaseStageLabel: '待仓库发货' })
+    expect(recorded.data).toMatchObject({ amount: 133000, paidAmount: 133000, remainingAmount: 0, paymentStatus: '已核实付清', status: 'approved', purchaseStage: 'warehouse_fulfillment', purchaseStageLabel: '待仓库发货' })
     expect((await mockService.related('materials', created.data!.id, 'expense-records')).data).toEqual([
-      expect.objectContaining({ amount: 133000, paymentMethod: '对公转账', paymentReference: 'OFFLINE-20260820-001' }),
+      expect.objectContaining({ amount: 133000, paymentMethod: '二维码支付', paymentReference: 'OFFLINE-20260820-001' }),
     ])
     expect(database.records('payments')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, subjectModule: 'materials', sourceType: 'platform', amount: 133000, paymentReference: 'OFFLINE-20260820-001' }))
     expect(database.records('issuance')).toHaveLength(issuanceBefore)

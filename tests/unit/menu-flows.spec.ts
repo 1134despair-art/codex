@@ -22,8 +22,8 @@ describe('V3.2 complete menu business flows', () => {
 
   it('opens every configured menu, tab and first detail without empty or permission failures', async () => {
     const routes = navGroups.flatMap((group) => group.items.map((item) => item.route))
-    expect(routes).toHaveLength(34)
-    expect(new Set(routes).size).toBe(34)
+    expect(routes).toHaveLength(35)
+    expect(new Set(routes).size).toBe(35)
 
     for (const route of routes) {
       if (route === 'dashboard') continue
@@ -67,17 +67,15 @@ describe('V3.2 complete menu business flows', () => {
   })
 
   it('creates and edits every platform-maintained entity allowed by V3.2', async () => {
-    const platformApprover = (await mockService.options('platform-assignees')).data[0].value
     const platformRole = (await mockService.options('roles')).data.find((item) => item.label.startsWith('平台管理员'))!.value
     const tier1 = (await mockService.options('tier1-dealers')).data[0].value
     const cases = [
       { module: 'dealers', payload: { account: 'menu-tier2@dealer.cn', initialPassword: 'Dealer123!', name: '菜单巡检二级经销商', region: '中国 · 浙江', tier: '二级', parentDealerId: tier1, phone: '13800138001', email: 'menu-tier2@dealer.cn', status: 'normal' } },
       { module: 'devices', payload: { code: 'MENU-DEVICE-20260812', name: '制冰机 CI-02', region: '中国 · 广东' } },
       { module: 'warehouse', payload: { category: '在库', deviceSN: 'MENU-WH-20260812', deviceModel: '海水淡化器 SW-04', region: '中国 · 福建' } },
-      { module: 'ota', payload: { name: '9.8.7', deviceType: '制冰机 CI-02', summary: '全菜单自动化固件', firmwareFile: 'menu-firmware.bin · 1.00 MB · 校验通过', forceUpdate: false, status: 'draft' } },
+      { module: 'ota', payload: { name: '9.8.7', applicableProductNames: ['制冰机'], applicableDeviceTypes: ['制冷设备'], applicableDeviceModels: ['CI-02'], summary: '全菜单自动化固件', firmwareFile: 'menu-firmware.bin · 1.00 MB · 校验通过', forceUpdate: false, status: 'draft' } },
       { module: 'material-catalog', payload: { name: '菜单巡检密封组件', category: '制冰机 CI-02', price: 128, stock: 20, status: 'normal' } },
       { module: 'couriers', payload: { name: '菜单巡检快递', courierCode: 'menu-express', apiKey: 'menu-secret-1234', status: 'normal' } },
-      { module: 'approval-flow', payload: { name: '菜单巡检平台审批', menuKey: 'warehouse', levels: '平台直接审核', platformApproverId: platformApprover, status: 'disabled' } },
       { module: 'banners', payload: { name: '菜单巡检 Banner', image: './assets/backgrounds/banner-maintenance.png', target: '/service', sort: 20, status: 'normal' } },
       { module: 'faq-documents', payload: { name: '菜单巡检常见问题', titleEn: 'Menu FAQ', summary: 'PDF 配置巡检', pdfFile: '/documents/topflow-machine-manual-zh.pdf', fileName: 'menu-faq.pdf', sort: 20, status: 'published' } },
       { module: 'support-settings', payload: { name: '菜单巡检客服配置', audience: 'all', servicePhone: '400-800-2026', serviceEmail: 'service@shark.cn', serviceHours: '周一至周日 09:00-18:00', status: 'normal' } },
@@ -92,12 +90,10 @@ describe('V3.2 complete menu business flows', () => {
       const listed = await mockService.all(item.module)
       expect(listed.data.some((record) => record.id === created.data?.id), `${item.module}/list`).toBe(true)
 
-      if (['dealers', 'material-catalog', 'couriers', 'approval-flow', 'banners', 'faq-documents', 'support-settings', 'after-sales-types', 'admins'].includes(item.module)) {
-        const originalMembers = created.data?.memberNames
+      if (['dealers', 'material-catalog', 'couriers', 'banners', 'faq-documents', 'support-settings', 'after-sales-types', 'admins'].includes(item.module)) {
         const edited = await mockService.update(item.module, created.data!.id, { name: `${created.data!.name}（已编辑）` })
         expect(edited.code, `${item.module}/edit: ${edited.msg}`).toBe(200)
         expect(edited.data?.name).toContain('已编辑')
-        if (item.module === 'approval-flow') expect(edited.data?.memberNames).toBe(originalMembers)
       }
     }
 
@@ -190,7 +186,7 @@ describe('V3.2 complete menu business flows', () => {
     login()
     expect((await mockService.action('materials', request.data!.id, 'approve', { reason: '平台巡检通过' })).data?.status).toBe('approved')
     const courier = (await mockService.options('enabled-couriers')).data[0]
-    expect((await mockService.action('materials', request.data!.id, 'ship', { courierId: courier.value, trackingNo: 'MENU-SHIP-20260812' })).data?.status).toBe('shipped')
+    expect((await mockService.action('materials', request.data!.id, 'ship', { courierId: courier.value, trackingNo: 'MENU-SHIP-20260812', shipmentPhoto: 'data:image/png;base64,AA==' })).data?.status).toBe('shipped')
     expect(useDatabaseStore().records('issuance').some((item) => item.sourceRequestId === request.data!.id && item.trackingNo === 'MENU-SHIP-20260812')).toBe(true)
   })
 
@@ -205,11 +201,11 @@ describe('V3.2 complete menu business flows', () => {
     expect((await mockService.update('faq-documents', faq.id, { summary: '更新后的 PDF 说明' })).data?.summary).toBe('更新后的 PDF 说明')
   })
 
-  it('updates fixed payment settings and role permissions while keeping audit modules immutable', async () => {
-    const channel = (await mockService.all('payment-settings')).data.find((item) => item.category === '支付渠道')!
-    expect((await mockService.action('payment-settings', channel.id, 'toggle', { reason: '菜单巡检开关' })).data?.status).toBe('disabled')
-    const merchant = (await mockService.all('payment-settings')).data.find((item) => item.category === '商户配置')!
-    expect((await mockService.update('payment-settings', merchant.id, { summary: '菜单巡检商户参数' })).data?.summary).toBe('菜单巡检商户参数')
+  it('updates supplier QR settings and role permissions while keeping audit modules immutable', async () => {
+    const supplierQr = (await mockService.all('payment-settings')).data.find((item) => item.category === '供应商收款码')!
+    expect((await mockService.action('payment-settings', supplierQr.id, 'toggle', { reason: '菜单巡检开关' })).data?.status).toBe('disabled')
+    expect((await mockService.update('payment-settings', supplierQr.id, { summary: '菜单巡检供应商收款码' })).data?.summary).toBe('菜单巡检供应商收款码')
+    expect((await mockService.all('payment-settings')).data.every((item) => item.category === '供应商收款码' && item.channel === '二维码支付')).toBe(true)
 
     const role = (await mockService.all('roles')).data.find((item) => item.roleKey === 'custom')!
     const roleResult = await mockService.action('roles', role.id, 'permissions', { permissions: ['dashboard:view', 'repairs:view'] })
@@ -224,10 +220,11 @@ describe('V3.2 complete menu business flows', () => {
   })
 
   it('rejects missing required fields and unsupported create operations at the service boundary', async () => {
-    for (const module of ['dealers', 'devices', 'warehouse', 'ota', 'material-catalog', 'couriers', 'approval-flow', 'banners', 'admins']) {
+    for (const module of ['dealers', 'devices', 'warehouse', 'ota', 'material-catalog', 'couriers', 'banners', 'admins']) {
       const result = await mockService.create(module, {})
       expect(result.code, `${module}: ${result.msg}`).toBe(422)
     }
+    expect((await mockService.create('approval-flow', { name: '不允许新增' })).code).toBe(403)
     expect((await mockService.create('projects', { name: '缺少设备的项目' })).code).toBe(422)
     for (const module of ['users', 'repairs', 'messages', 'complaints', 'issuance', 'payments', 'roles', 'logs']) {
       expect((await mockService.create(module, { name: '不应创建' })).code, module).toBe(403)

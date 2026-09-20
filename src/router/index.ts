@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: '/dashboard' },
       { path: 'dashboard', name: 'dashboard', component: DashboardView, meta: { permission: 'dashboard:view', title: '首页' } },
       { path: 'analytics', redirect: '/dashboard' },
+      { path: 'purchase-shipping', redirect: { path: '/product-purchase', query: { tab: 'shipping' } } },
       ...moduleRoutes,
       { path: 'payment-settings', name: 'payment-settings', component: ConfigView, meta: { permission: 'payment-settings:view', title: '支付配置' } },
       { path: 'launch-settings', name: 'launch-settings', component: LaunchConfigView, meta: { permission: 'launch-settings:view', title: 'APP 启动页' } },

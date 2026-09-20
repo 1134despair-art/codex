@@ -1413,66 +1413,6 @@
       }
     },
     {
-      "id": "payment-settings-channels",
-      "hash": "#/payment-settings?tab=channels",
-      "label": "支付渠道",
-      "file": "092-payment-settings-channels.png",
-      "size": 76329,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 442
-      }
-    },
-    {
-      "id": "payment-settings-merchant",
-      "hash": "#/payment-settings?tab=merchant",
-      "label": "商户与密钥",
-      "file": "093-payment-settings-merchant.png",
-      "size": 78362,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 443
-      }
-    },
-    {
-      "id": "payment-settings-callback",
-      "hash": "#/payment-settings?tab=callback",
-      "label": "回调与通知",
-      "file": "094-payment-settings-callback.png",
-      "size": 77402,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 404
-      }
-    },
-    {
-      "id": "payment-settings-risk",
-      "hash": "#/payment-settings?tab=risk",
-      "label": "支付安全",
-      "file": "095-payment-settings-risk.png",
-      "size": 76907,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 419
-      }
-    },
-    {
       "id": "settings-general",
       "hash": "#/settings?tab=general",
       "label": "基础信息",

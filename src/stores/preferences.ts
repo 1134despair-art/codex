@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 export const PREFERENCES_KEY = 'shark-sister-admin.prefs.v1'
-const DEFAULT_EXPANDED_GROUPS = ['工作台', '客户与渠道', '设备与库存', '服务与售后', '交易与内容', '系统管理']
+const DEFAULT_EXPANDED_GROUPS = ['工作台', '客户与渠道', '设备与产品', '仓储与采购', '服务与售后', '财务与支付', '内容运营', '系统管理']
 
 interface Preferences {
   collapsed: boolean

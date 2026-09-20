@@ -8,7 +8,7 @@
 - 后端豁免：5
 - 登记完整率：100%
 - 行为回归：323 项单元测试（v14）
-- 本轮重点闭环：跨区安装审核、双重身份、服务器航点隐私、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置
+- 本轮重点闭环：跨区安装审核、双重身份、服务器航点按用户展示、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置
 
 | 需求 ID | Excel 行 | Excel 一级模块 | 系统语义模块 | 路由 | 状态 | 测试编号 |
 |---|---:|---|---|---|---|---|
@@ -46,7 +46,7 @@
 | REQ-USERS-035 | 35 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
 | REQ-USERS-036 | 36 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
 | REQ-USERS-037 | 37 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
-| REQ-USERS-038 | 38 | 用户管理 | 用户管理 | /users | 通过 | UT-WAYPOINT-PRIVACY |
+| REQ-USERS-038 | 38 | 用户管理 | 用户管理 | /users | 通过 | UT-WAYPOINT-RELATION |
 | REQ-DEVICES-039 | 39 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |
 | REQ-DEVICES-040 | 40 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |
 | REQ-DEVICES-041 | 41 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |

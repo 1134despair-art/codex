@@ -60,8 +60,8 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: 'BX202607190077 归属记录', category: '归属', status: 'completed', summary: '深圳海航 → 厦门蓝湾' },
   ],
   ota: [
-    { name: 'v2.4.1', category: '固件版本', status: 'processing', deviceType: '顶流机 TF-01', summary: '优化转向控制与离线重连', firmwareFile: 'tf-v2.4.1.bin' },
-    { name: 'v2.3.7', category: '固件版本', status: 'published', deviceType: '制冰机 CI-02', summary: '修复低温环境下制冰中断', firmwareFile: 'ci-v2.3.7.bin' },
+    { name: 'v2.4.1', category: '固件版本', status: 'processing', applicableProductNames: ['顶流机'], applicableDeviceTypes: ['船载设备'], applicableDeviceModels: ['TF-01'], summary: '优化转向控制与离线重连', firmwareFile: 'tf-v2.4.1.bin' },
+    { name: 'v2.3.7', category: '固件版本', status: 'published', applicableProductNames: ['制冰机'], applicableDeviceTypes: ['制冷设备'], applicableDeviceModels: ['CI-02'], summary: '修复低温环境下制冰中断', firmwareFile: 'ci-v2.3.7.bin' },
   ],
   repairs: [
     { name: '制冰机不出冰', category: '制冰系统', status: 'pending', summary: 'BX202608100021 · 用户张三' },
@@ -124,11 +124,11 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: '温度传感器 × 4', category: '物料发放', status: 'completed', summary: '已于 07-29 完成更换' },
   ],
   payments: [
-    { name: '制冰机延保服务', category: '微信支付', status: 'paid', amount: 1280, account: '138****5678', summary: 'CNY' },
-    { name: '淡化器上门服务', category: 'PayPal', status: 'paid', amount: 320, account: 'a***@oceanmail.com', summary: 'USD' },
-    { name: '电池检测服务', category: '支付宝', status: 'pending', amount: 360, account: '159****1033', summary: 'CNY' },
-    { name: '网络设备远程诊断', category: 'Apple Pay', status: 'failed', amount: 85, account: 'm***@example.co.uk', summary: 'GBP' },
-    { name: '顶流机技术支持', category: 'Google Pay', status: 'refunded', amount: 120, account: 'a***@marine.com', summary: 'USD' },
+    { name: '制冰机延保服务', category: '二维码支付', status: 'paid', amount: 1280, account: '138****5678', summary: 'CNY' },
+    { name: '淡化器上门服务', category: '二维码支付', status: 'paid', amount: 320, account: 'a***@oceanmail.com', summary: 'USD' },
+    { name: '电池检测服务', category: '二维码支付', status: 'pending', amount: 360, account: '159****1033', summary: 'CNY' },
+    { name: '网络设备远程诊断', category: '二维码支付', status: 'failed', amount: 85, account: 'm***@example.co.uk', summary: 'GBP' },
+    { name: '顶流机技术支持', category: '二维码支付', status: 'refunded', amount: 120, account: 'a***@marine.com', summary: 'USD' },
   ],
   banners: [
     { name: '夏季设备保养指南', category: '首页顶部', status: 'normal', image: './assets/backgrounds/banner-maintenance.png', target: '内容详情 / GUIDE-2026-08', sort: 1 },
@@ -158,15 +158,7 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: '远程禁用设备', category: '业务操作', status: 'warning', summary: 'BX202606120094 · 售后确认' },
     { name: '审批物料申请', category: '业务操作', status: 'normal', summary: 'MA20260809071 · 审批通过' },
   ],
-  'payment-settings': [
-    { name: '微信支付', category: '支付渠道', status: 'normal', summary: '国内用户 · 商户认证已完成' },
-    { name: '支付宝', category: '支付渠道', status: 'normal', summary: '国内用户 · 商户认证已完成' },
-    { name: 'PayPal', category: '支付渠道', status: 'normal', summary: '海外用户 · Webhook 正常' },
-    { name: 'Apple Pay', category: '支付渠道', status: 'normal', summary: '海外用户 · 商户校验正常' },
-    { name: 'Google Pay', category: '支付渠道', status: 'normal', summary: '海外用户 · 商户校验正常' },
-    { name: '鲨鱼妹妹国内商户', category: '商户配置', status: 'normal', summary: '商户号：**** 6028 · 人民币结算' },
-    { name: 'Shark Sister Global', category: '商户配置', status: 'normal', summary: 'Merchant ID: **** 8194 · USD settlement' },
-  ],
+  'payment-settings': [],
 }
 
 const contacts = ['138****5678', '159****1033', 'a***@oceanmail.com', 'm***@example.co.uk']
@@ -256,6 +248,10 @@ export function createSeedDatabase(): StoredDatabase {
     recordedAt: iso(userIndex * 8 + index),
     coordinates: `${22.52 + userIndex * 0.03 + index * 0.01}, ${114.05 + index * 0.04}`,
     location: ['深圳湾航道', '珠江口外锚地', '大鹏湾作业区'][index],
+    serverSaved: true,
+    storageMode: 'server',
+    adminVisible: true,
+    syncStatus: 'synced',
   })))
   records['ownership-history'] = records.devices.flatMap((device) => [0, 1].map((index) => relation('ownership', device, index, {
     deviceId: device.id,
