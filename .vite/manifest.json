@@ -1,0 +1,170 @@
+{
+  "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js": {
+    "file": "assets/AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+    "name": "AppIcon.vue_vue_type_script_setup_true_lang",
+    "imports": [
+      "index.html"
+    ],
+    "assets": [
+      "assets/auth-marine-operations-DVvl5aws.png",
+      "assets/banner-maintenance-DOe6dYb2.png",
+      "assets/banner-service-network-DtEcQnC8.png",
+      "assets/banner-watermaker-D0gl6cOw.png",
+      "assets/launch-logo-DKpGo5g7.png",
+      "assets/launch-screen-J1hYJnZ8.png",
+      "assets/empty-no-results-BSpzaYqd.png",
+      "assets/topflow-machine-manual-zh-CQSVU3Pa.pdf"
+    ]
+  },
+  "_excel-Ds9Rg68j.js": {
+    "file": "assets/excel-Ds9Rg68j.js",
+    "name": "excel",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_mock-UfllXion.js": {
+    "file": "assets/mock-UfllXion.js",
+    "name": "mock",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_preferences-DlCvmLQs.js": {
+    "file": "assets/preferences-DlCvmLQs.js",
+    "name": "preferences",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index-BmX0SN5Q.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/views/AuthView.vue",
+      "src/components/AppShell.vue",
+      "src/views/DashboardView.vue",
+      "src/views/ModuleView.vue",
+      "src/views/ConfigView.vue",
+      "src/views/LaunchConfigView.vue",
+      "src/views/NotFoundView.vue"
+    ],
+    "css": [
+      "assets/index-DheKgZNg.css"
+    ]
+  },
+  "src/assets/backgrounds/auth-marine-operations.png": {
+    "file": "assets/auth-marine-operations-DVvl5aws.png",
+    "src": "src/assets/backgrounds/auth-marine-operations.png"
+  },
+  "src/assets/backgrounds/banner-maintenance.png": {
+    "file": "assets/banner-maintenance-DOe6dYb2.png",
+    "src": "src/assets/backgrounds/banner-maintenance.png"
+  },
+  "src/assets/backgrounds/banner-service-network.png": {
+    "file": "assets/banner-service-network-DtEcQnC8.png",
+    "src": "src/assets/backgrounds/banner-service-network.png"
+  },
+  "src/assets/backgrounds/banner-watermaker.png": {
+    "file": "assets/banner-watermaker-D0gl6cOw.png",
+    "src": "src/assets/backgrounds/banner-watermaker.png"
+  },
+  "src/assets/backgrounds/launch-logo.png": {
+    "file": "assets/launch-logo-DKpGo5g7.png",
+    "src": "src/assets/backgrounds/launch-logo.png"
+  },
+  "src/assets/backgrounds/launch-screen.png": {
+    "file": "assets/launch-screen-J1hYJnZ8.png",
+    "src": "src/assets/backgrounds/launch-screen.png"
+  },
+  "src/assets/illustrations/empty-no-results.png": {
+    "file": "assets/empty-no-results-BSpzaYqd.png",
+    "src": "src/assets/illustrations/empty-no-results.png"
+  },
+  "src/components/AppShell.vue": {
+    "file": "assets/AppShell-v1B7jYim.js",
+    "name": "AppShell",
+    "src": "src/components/AppShell.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+      "_preferences-DlCvmLQs.js"
+    ]
+  },
+  "src/documents/topflow-machine-manual-zh.pdf": {
+    "file": "assets/topflow-machine-manual-zh-CQSVU3Pa.pdf",
+    "src": "src/documents/topflow-machine-manual-zh.pdf"
+  },
+  "src/views/AuthView.vue": {
+    "file": "assets/AuthView-Bw36Gy6T.js",
+    "name": "AuthView",
+    "src": "src/views/AuthView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js"
+    ]
+  },
+  "src/views/ConfigView.vue": {
+    "file": "assets/ConfigView-B-_ib1yw.js",
+    "name": "ConfigView",
+    "src": "src/views/ConfigView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+      "_excel-Ds9Rg68j.js",
+      "_mock-UfllXion.js"
+    ]
+  },
+  "src/views/DashboardView.vue": {
+    "file": "assets/DashboardView-BFDoQnDw.js",
+    "name": "DashboardView",
+    "src": "src/views/DashboardView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+      "index.html",
+      "_mock-UfllXion.js"
+    ]
+  },
+  "src/views/LaunchConfigView.vue": {
+    "file": "assets/LaunchConfigView-BY-c6z97.js",
+    "name": "LaunchConfigView",
+    "src": "src/views/LaunchConfigView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js"
+    ],
+    "css": [
+      "assets/LaunchConfigView-BxSnh0Aa.css"
+    ]
+  },
+  "src/views/ModuleView.vue": {
+    "file": "assets/ModuleView-Dc_jjeOQ.js",
+    "name": "ModuleView",
+    "src": "src/views/ModuleView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+      "_mock-UfllXion.js",
+      "_excel-Ds9Rg68j.js",
+      "_preferences-DlCvmLQs.js"
+    ]
+  },
+  "src/views/NotFoundView.vue": {
+    "file": "assets/NotFoundView-BnPYGdxb.js",
+    "name": "NotFoundView",
+    "src": "src/views/NotFoundView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_AppIcon.vue_vue_type_script_setup_true_lang-CZa6sYyo.js",
+      "index.html"
+    ]
+  }
+}
