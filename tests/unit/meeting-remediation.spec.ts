@@ -24,12 +24,13 @@ describe('meeting gap remediation', () => {
   })
 
   it('generates unique device identity mapping without manual input', async () => {
-    const created = await mockService.create('devices', { code: 'AUTO-ID-20260821', name: '制冰机 CI-02', region: '中国 · 广东' })
-    expect(created.code, created.msg).toBe(200)
-    expect(created.data).toMatchObject({
+    const warehouseId = useDatabaseStore().records('warehouses').find((item) => item.status === 'normal' && item.domain === 'cn')!.id
+    const inbound = await mockService.create('warehouse', { category: '在库', deviceSN: 'AUTO-ID-20260821', deviceModel: '制冰机 CI-02', region: '中国 · 广东', warehouseId })
+    expect(inbound.code, inbound.msg).toBe(200)
+    expect(useDatabaseStore().records('devices').find((item) => item.code === 'AUTO-ID-20260821')).toMatchObject({
       communicationId: 'COMM-ID20260821', chipId: 'CHIP-ID20260821',
       mainboardSerial: 'MB-ID20260821', coreComponentSerials: 'CORE-ID20260821',
-      status: 'offline',
+      status: 'offline', inventoryStatus: 'in_stock', ownerId: 'platform',
     })
   })
 
@@ -77,6 +78,12 @@ describe('meeting gap remediation', () => {
     const repairs = database.records('repairs')
     const issuance = database.records('issuance').find((item) => ['shipped', 'received'].includes(item.status) && repairs.some((repair) => repair.deviceSN === item.deviceSN))!
     const repair = repairs.find((item) => item.deviceSN === issuance.deviceSN)!
+    if (issuance.status === 'shipped') {
+      expect((await mockService.action('issuance', issuance.id, 'complete-replacement', {
+        repairId: repair.id, oldPartSerial: 'OLD-001', newPartSerial: 'NEW-001', reason: '未签收',
+      })).code).toBe(409)
+      expect((await mockService.action('issuance', issuance.id, 'confirm-receipt', { reason: '已签收' })).code).toBe(200)
+    }
     const invalid = await mockService.action('issuance', issuance.id, 'complete-replacement', { oldPartSerial: 'PART-001', newPartSerial: 'PART-001', reason: '测试' })
     expect(invalid.code).toBe(422)
     const completed = await mockService.action('issuance', issuance.id, 'complete-replacement', { repairId: repair.id, oldPartSerial: 'OLD-001', newPartSerial: 'NEW-001', reason: '故障件更换' })
@@ -93,6 +100,7 @@ describe('meeting gap remediation', () => {
       name: '跨区安装自动化项目',
       deviceSN: device.code,
       shipOwner: '测试船东',
+      customerPhone: '13800000001',
       installationRegion: '中国 · 海南',
       summary: '验证出厂地区与实际安装地区不一致时自动送审',
     })
@@ -206,16 +214,24 @@ describe('meeting gap remediation', () => {
     expect((await mockService.action('materials', created.data!.id, 'start-production', {
       productionBatchNo: 'MULTI-PROD-001', productionAt: '2026-08-21', reason: '导入生产',
     })).code).toBe(200)
+    expect((await mockService.action('materials', created.data!.id, 'complete-production', {
+      productionCompletedAt: '2026-08-21', reason: '生产完成',
+    })).code).toBe(200)
 
     const paidAmount = expected - 100
+    expect((await mockService.action('materials', created.data!.id, 'record-expense', {
+      paidAmount, paymentProof: 'data:image/png;base64,AA==', paymentReference: 'MULTI-RELEASE-REJECT',
+      paidAt: '2026-08-21', warehouseDecision: 'release',
+    })).code).toBe(409)
     const recorded = await mockService.action('materials', created.data!.id, 'record-expense', {
-      paidAmount, paymentProof: 'data:image/png;base64,AA==', paymentReference: 'MULTI-PURCHASE-001', paidAt: '2026-08-21', warehouseDecision: 'release', paymentNote: '财务核实通过',
+      paidAmount, paymentProof: 'data:image/png;base64,AA==', paymentReference: 'MULTI-PURCHASE-001', paidAt: '2026-08-21', paymentNote: '财务核实通过',
     })
     expect(recorded.code, recorded.msg).toBe(200)
+    expect(recorded.data).toMatchObject({ purchaseStage: 'finance_confirmation', remainingAmount: 100 })
     const payment = database.records('payments').find((item) => item.subjectId === created.data!.id)!
     const billItems = database.records('billing-items').filter((item) => item.paymentId === payment.id)
     expect(billItems).toHaveLength(2)
-    expect(billItems.reduce((sum, item) => sum + Number(item.subtotal) + Number(item.adjustment), 0)).toBe(paidAmount)
+    expect(billItems.reduce((sum, item) => sum + Number(item.subtotal) + Number(item.adjustment), 0)).toBe(expected)
   })
 
   it('imports validated material master data without a backend', async () => {

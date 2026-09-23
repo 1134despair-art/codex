@@ -22,8 +22,8 @@ describe('V3.2 complete menu business flows', () => {
 
   it('opens every configured menu, tab and first detail without empty or permission failures', async () => {
     const routes = navGroups.flatMap((group) => group.items.map((item) => item.route))
-    expect(routes).toHaveLength(35)
-    expect(new Set(routes).size).toBe(35)
+    expect(routes).toHaveLength(38)
+    expect(new Set(routes).size).toBe(37)
 
     for (const route of routes) {
       if (route === 'dashboard') continue
@@ -71,7 +71,6 @@ describe('V3.2 complete menu business flows', () => {
     const tier1 = (await mockService.options('tier1-dealers')).data[0].value
     const cases = [
       { module: 'dealers', payload: { account: 'menu-tier2@dealer.cn', initialPassword: 'Dealer123!', name: '菜单巡检二级经销商', region: '中国 · 浙江', tier: '二级', parentDealerId: tier1, phone: '13800138001', email: 'menu-tier2@dealer.cn', status: 'normal' } },
-      { module: 'devices', payload: { code: 'MENU-DEVICE-20260812', name: '制冰机 CI-02', region: '中国 · 广东' } },
       { module: 'warehouse', payload: { category: '在库', deviceSN: 'MENU-WH-20260812', deviceModel: '海水淡化器 SW-04', region: '中国 · 福建' } },
       { module: 'ota', payload: { name: '9.8.7', applicableProductNames: ['制冰机'], applicableDeviceTypes: ['制冷设备'], applicableDeviceModels: ['CI-02'], summary: '全菜单自动化固件', firmwareFile: 'menu-firmware.bin · 1.00 MB · 校验通过', forceUpdate: false, status: 'draft' } },
       { module: 'material-catalog', payload: { name: '菜单巡检密封组件', category: '制冰机 CI-02', price: 128, stock: 20, status: 'normal' } },
@@ -100,8 +99,8 @@ describe('V3.2 complete menu business flows', () => {
     const courier = useDatabaseStore().records('couriers').find((item) => item.courierCode === 'menu-express')!
     expect(courier.apiKey).toBeUndefined()
     expect(courier.apiKeyMasked).toBe('********1234')
-    const device = useDatabaseStore().records('devices').find((item) => item.code === 'MENU-DEVICE-20260812')!
-    expect(device).toMatchObject({ activation: 'inactive', bindingStatus: 'unbound', firmware: 'v1.0.0', status: 'offline' })
+    const device = useDatabaseStore().records('devices').find((item) => item.code === 'MENU-WH-20260812')!
+    expect(device).toMatchObject({ activation: 'inactive', bindingStatus: 'unbound', firmware: 'v1.0.0', status: 'offline', inventoryStatus: 'in_stock' })
   })
 
   it('runs users, devices and projects through their configured operations', async () => {
@@ -121,7 +120,7 @@ describe('V3.2 complete menu business flows', () => {
 
     const project = (await mockService.all('projects')).data[0]
     expect((await mockService.update('projects', project.id, { shipOwner: '菜单巡检船东' })).data?.shipOwner).toBe('菜单巡检船东')
-    expect((await mockService.create('projects', { name: '菜单巡检新增项目', deviceSN: device.code, shipOwner: '新增船东', usageRegion: '广东' })).code).toBe(200)
+    expect((await mockService.create('projects', { name: '菜单巡检新增项目', deviceSN: device.code, shipOwner: '新增船东', customerPhone: '13800000002', usageRegion: '广东' })).code).toBe(200)
   })
 
   it('runs repair, message and complaint records through assignment, reply and completion', async () => {
@@ -131,6 +130,8 @@ describe('V3.2 complete menu business flows', () => {
 
     const repair = (await mockService.all('repairs')).data.find((item) => item.status === 'pending')!
     expect((await mockService.action('repairs', repair.id, 'assign', { assigneeId: dealer.value, reason: '菜单巡检分配' })).data?.status).toBe('processing')
+    expect((await mockService.action('repairs', repair.id, 'reply', { replyContent: '总部越权回复' })).code).toBe(403)
+    expect((await mockService.action('repairs', repair.id, 'escalate', { reason: '菜单巡检转回总部' })).code).toBe(200)
     expect((await mockService.action('repairs', repair.id, 'reply', { replyContent: '菜单巡检回复' })).code).toBe(200)
     expect((await mockService.action('repairs', repair.id, 'complete', { result: '菜单巡检完成' })).data?.status).toBe('completed')
 
@@ -220,10 +221,11 @@ describe('V3.2 complete menu business flows', () => {
   })
 
   it('rejects missing required fields and unsupported create operations at the service boundary', async () => {
-    for (const module of ['dealers', 'devices', 'warehouse', 'ota', 'material-catalog', 'couriers', 'banners', 'admins']) {
+    for (const module of ['dealers', 'warehouse', 'ota', 'material-catalog', 'couriers', 'banners', 'admins']) {
       const result = await mockService.create(module, {})
       expect(result.code, `${module}: ${result.msg}`).toBe(422)
     }
+    expect((await mockService.create('devices', {})).code).toBe(409)
     expect((await mockService.create('approval-flow', { name: '不允许新增' })).code).toBe(403)
     expect((await mockService.create('projects', { name: '缺少设备的项目' })).code).toBe(422)
     for (const module of ['users', 'repairs', 'messages', 'complaints', 'issuance', 'payments', 'roles', 'logs']) {

@@ -6,6 +6,16 @@ import { moduleConfigs } from '@/config/modules'
 import { useAuthStore } from '@/stores/auth'
 import { useDatabaseStore } from '@/stores/database'
 
+async function distributeDevice(sn: string, region: string, components: Array<{ serialNumber: string; specification: string }> = []) {
+  const inbound = await mockService.importDevices([{ sn, model: '制冰机 CI-02', region, components }], 'warehouse')
+  expect(inbound.code, inbound.msg).toBe(200)
+  const outbound = await mockService.create('warehouse', { category: '出库', selectedDevices: [sn], targetDealerId: 'dealer-t1-sz', summary: '测试设备分发' })
+  expect(outbound.code, outbound.msg).toBe(200)
+  const shipped = await mockService.action('warehouse', outbound.data!.id, 'confirm-outbound', { reason: '测试设备分发' })
+  expect(shipped.code, shipped.msg).toBe(200)
+  return useDatabaseStore().records('devices').find((item) => item.code === sn)!
+}
+
 describe('RuoYi-compatible mock service', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -18,6 +28,72 @@ describe('RuoYi-compatible mock service', () => {
     expect(result.rows.length).toBeLessThanOrEqual(5)
     expect(result.total).toBeGreaterThan(0)
     expect(result.rows[0].code.localeCompare(result.rows.at(-1)?.code || '', 'zh-CN')).toBeLessThanOrEqual(0)
+  })
+
+  it('keeps product and material choices inside the selected data domain', async () => {
+    const auth = useAuthStore()
+    const database = useDatabaseStore()
+    for (const domain of ['cn', 'global'] as const) {
+      auth.setDomain(domain)
+      const products = database.records('product-catalog').filter((item) => item.domain === domain && item.status === 'normal')
+      const materials = database.records('material-catalog').filter((item) => item.domain === domain && item.status !== 'disabled')
+      const models = (await mockService.options('device-models')).data.map((item) => item.value)
+      const purchaseChoices = (await mockService.options('purchasable-items')).data.map((item) => item.value)
+      expect(models.sort()).toEqual([...new Set(products.map((item) => String(item.deviceModel)))].sort())
+      expect(purchaseChoices.sort()).toEqual([
+        ...products.map((item) => `product:${item.id}`),
+        ...materials.map((item) => `material:${item.id}`),
+      ].sort())
+    }
+  })
+
+  it('uses newly imported product master data when devices enter each domain warehouse', async () => {
+    const auth = useAuthStore()
+    for (const domain of ['cn', 'global'] as const) {
+      auth.setDomain(domain)
+      const product = await mockService.importProducts([{
+        code: 'PROD-CUSTOM-RD-X1', name: '测试雷达', deviceType: '雷达设备', deviceModel: 'RD-X1',
+        specification: '24V · 30 海里', retailPrice: 28000, tier1Price: 22000,
+      }])
+      expect(product.code, product.msg).toBe(200)
+      const sn = domain === 'cn' ? 'CUSTOM-CN-RD-X1' : 'CUSTOM-GL-RD-X1'
+      const inbound = await mockService.importDevices([{
+        sn, model: '测试雷达 RD-X1', deviceType: '雷达设备', specification: '24V · 30 海里',
+        region: domain === 'cn' ? '中国 · 广东' : '美国 · California', components: [],
+      }], 'warehouse')
+      expect(inbound.code, inbound.msg).toBe(200)
+      const device = useDatabaseStore().records('devices').find((item) => item.code === sn)
+      expect(device).toMatchObject({ deviceName: '测试雷达', deviceType: '雷达设备', deviceModel: 'RD-X1', specification: '24V · 30 海里', domain })
+      expect(device?.warehouseId).toBeTruthy()
+      expect(device?.warehouseLocationId).toBeTruthy()
+    }
+  })
+
+  it('filters devices by a model actually present in the visible device list', async () => {
+    const modelFilter = moduleConfigs.devices.filters.find((item) => item.field === 'deviceModel')
+    expect(modelFilter?.optionSource).toBe('listed-device-models')
+    const model = (await mockService.options('listed-device-models')).data[0]?.value
+    expect(model).toBeTruthy()
+    const result = await mockService.list('devices', { pageNum: 1, pageSize: 50, tab: 'all', filters: { deviceModel: model } })
+    expect(result.total).toBeGreaterThan(0)
+    expect(result.rows.every((item) => item.deviceModel === model)).toBe(true)
+  })
+
+  it('uses accessible devices for installation choices and in-stock devices for warehouse filters', async () => {
+    expect(moduleConfigs.projects.fields.find((item) => item.field === 'deviceModel')?.optionSource).toBe('accessible-device-models')
+    expect(moduleConfigs.warehouse.tabFilters?.stock.find((item) => item.field === 'deviceModel')?.optionSource).toBe('stock-device-models')
+    const distributed = (await mockService.all('devices')).data
+    const accessibleTypes = (await mockService.options('accessible-device-types')).data.map((item) => item.value)
+    expect(accessibleTypes.sort()).toEqual([...new Set(distributed.map((item) => String(item.deviceType)))].sort())
+    const type = accessibleTypes[0]
+    const accessibleModels = (await mockService.options('accessible-device-models', { deviceType: type })).data.map((item) => item.value)
+    expect(accessibleModels.sort()).toEqual([...new Set(distributed.filter((item) => item.deviceType === type).map((item) => String(item.deviceModel)))].sort())
+
+    const sn = 'STOCK-MODEL-TEST-001'
+    expect((await mockService.importDevices([{ sn, model: '制冰机 CI-02', region: '中国 · 广东', components: [] }], 'warehouse')).code).toBe(200)
+    const stockModels = (await mockService.options('stock-device-models')).data.map((item) => item.value)
+    expect(stockModels).toContain('CI-02')
+    expect((await mockService.options('stock-device-models', { deviceType: '制冷设备' })).data.map((item) => item.value)).toContain('CI-02')
   })
 
   it('enforces configurable export permission and exports only the current filtered result', async () => {
@@ -173,7 +249,7 @@ describe('RuoYi-compatible mock service', () => {
   it('creates projects, derives device relations and retains project history', async () => {
     const device = (await mockService.all('devices')).data.find((item) => item.activationDate) || (await mockService.all('devices')).data[0]
     const created = await mockService.create('projects', {
-      name: '关联字段项目', deviceSN: device.code, shipOwner: '自动化船东', usageRegion: '广东', summary: '关联字段测试',
+      name: '关联字段项目', deviceSN: device.code, shipOwner: '自动化船东', customerPhone: '13800000003', usageRegion: '广东', summary: '关联字段测试',
     })
     expect(created.code).toBe(200)
     expect(created.data?.deviceModel).toBe(device.deviceModel)
@@ -186,23 +262,21 @@ describe('RuoYi-compatible mock service', () => {
   })
 
   it('stores device child materials and queues remote-disable when the device is offline', async () => {
-    const created = await mockService.create('devices', {
-      code: 'BX-COMPONENT-AUTO-001', name: '制冰机 CI-02', region: '中国 · 广东',
-      components: [{ serialNumber: 'AUTO-PUMP-001', specification: '海水泵 P-20' }, { serialNumber: 'AUTO-CTRL-001', specification: '控制器 C-02' }],
-    })
-    expect(created.code, created.msg).toBe(200)
-    const details = await mockService.related('devices', created.data!.id, 'device-components')
+    const device = await distributeDevice('BX-COMPONENT-AUTO-001', '中国 · 广东', [
+      { serialNumber: 'AUTO-PUMP-001', specification: '海水泵 P-20' }, { serialNumber: 'AUTO-CTRL-001', specification: '控制器 C-02' },
+    ])
+    const details = await mockService.related('devices', device.id, 'device-components')
     expect(details.data).toHaveLength(2)
     expect(details.data.map((item) => item.serialNumber).sort()).toEqual(['AUTO-CTRL-001', 'AUTO-PUMP-001'])
 
-    const disabled = await mockService.action('devices', created.data!.id, 'remote-disable', { reason: '验证离线指令' })
+    const disabled = await mockService.action('devices', device.id, 'remote-disable', { reason: '验证离线指令' })
     expect(disabled.data).toMatchObject({ status: 'offline', commandStatus: 'queued_offline', pendingRemoteStatus: 'disabled' })
-    expect(useDatabaseStore().records('device-commands').find((item) => item.deviceId === created.data!.id)).toMatchObject({ result: 'queued_offline', status: 'pending' })
+    expect(useDatabaseStore().records('device-commands').find((item) => item.deviceId === device.id)).toMatchObject({ result: 'queued_offline', status: 'pending' })
   })
 
   it('does not start warranty for an unactivated device', async () => {
-    const device = (await mockService.all('devices')).data.find((item) => item.activation === 'inactive')!
-    const created = await mockService.create('projects', { name: '待激活质保项目', deviceSN: device.code, shipOwner: '测试船东', usageRegion: '福建' })
+    const device = await distributeDevice('BX-UNACTIVATED-2026', '中国 · 广东')
+    const created = await mockService.create('projects', { name: '待激活质保项目', deviceSN: device.code, shipOwner: '测试船东', customerPhone: '13800000004', usageRegion: '福建' })
     expect(created.code, created.msg).toBe(200)
     expect(created.data).toMatchObject({ warrantyUntil: '', warrantyResult: '设备未激活，无法校验' })
   })
@@ -264,6 +338,8 @@ describe('RuoYi-compatible mock service', () => {
     const record = (await mockService.all('repairs')).data.find((item) => item.status === 'pending')!
     const assigneeId = (await mockService.options('dealers')).data[0].value
     expect((await mockService.action('repairs', record.id, 'assign', { assigneeId, reason: '分配给售后经销商' })).data?.status).toBe('processing')
+    expect((await mockService.action('repairs', record.id, 'complete', '已完成维修')).code).toBe(403)
+    expect((await mockService.action('repairs', record.id, 'escalate', { reason: '转回总部维修' })).data?.ownerId).toBe('platform')
     expect((await mockService.action('repairs', record.id, 'complete', '已完成维修')).data?.status).toBe('completed')
   })
 
@@ -486,22 +562,26 @@ describe('RuoYi-compatible mock service', () => {
     expect((await mockService.action('materials', created.data!.id, 'start-production', {
       productionBatchNo: 'PROD-AUTO-001', productionAt: '2026-08-20', reason: '已导入生产计划',
     })).code).toBe(200)
+    expect((await mockService.action('materials', created.data!.id, 'record-expense', { paidAmount: 133000 })).code).toBe(409)
+    expect((await mockService.action('materials', created.data!.id, 'complete-production', {
+      productionCompletedAt: '2026-08-20', reason: '生产质检完成',
+    })).code).toBe(200)
+    expect(database.records('payment-transactions')).toContainEqual(expect.objectContaining({ parentOrderCode: created.data!.code, childOrderCode: `${created.data!.code}-P01`, status: 'pending' }))
 
     const recorded = await mockService.action('materials', created.data!.id, 'record-expense', {
       actualUnitPrice: 66500,
-      paidAmount: 133000,
+      paidAmount: 136000,
       paymentProof: 'data:image/png;base64,AA==',
       paymentReference: 'OFFLINE-20260820-001',
       paidAt: '2026-08-20',
       paymentNote: '二维码付款凭证已核实',
-      warehouseDecision: 'release',
     })
     expect(recorded.code, recorded.msg).toBe(200)
-    expect(recorded.data).toMatchObject({ amount: 133000, paidAmount: 133000, remainingAmount: 0, paymentStatus: '已核实付清', status: 'approved', purchaseStage: 'warehouse_fulfillment', purchaseStageLabel: '待仓库发货' })
+    expect(recorded.data).toMatchObject({ amount: 136000, paidAmount: 136000, remainingAmount: 0, paymentStatus: '已核实付清', status: 'approved', purchaseStage: 'warehouse_fulfillment', purchaseStageLabel: '待仓库发货' })
     expect((await mockService.related('materials', created.data!.id, 'expense-records')).data).toEqual([
-      expect.objectContaining({ amount: 133000, paymentMethod: '二维码支付', paymentReference: 'OFFLINE-20260820-001' }),
+      expect.objectContaining({ amount: 136000, paymentMethod: '二维码支付', paymentReference: 'OFFLINE-20260820-001' }),
     ])
-    expect(database.records('payments')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, subjectModule: 'materials', sourceType: 'platform', amount: 133000, paymentReference: 'OFFLINE-20260820-001' }))
+    expect(database.records('payments')).toContainEqual(expect.objectContaining({ subjectId: created.data!.id, subjectModule: 'materials', sourceType: 'purchase', amount: 136000, paidAmount: 136000, paymentReference: 'OFFLINE-20260820-001' }))
     expect(database.records('issuance')).toHaveLength(issuanceBefore)
     expect(database.records('material-catalog').map((item) => ({ id: item.id, stock: item.stock }))).toEqual(materialStockBefore)
   })
@@ -511,7 +591,7 @@ describe('RuoYi-compatible mock service', () => {
     auth.logout()
     auth.login('tier1@dealer.cn', 'Dealer123!')
     const device = (await mockService.all('devices')).data.find((item) => item.ownerId === auth.session?.ownerId)!
-    const project = await mockService.create('projects', { name: '售后转移联动项目', deviceSN: device.code, shipOwner: '联动船东', usageRegion: '广东' })
+    const project = await mockService.create('projects', { name: '售后转移联动项目', deviceSN: device.code, shipOwner: '联动船东', customerPhone: '13800000005', usageRegion: '广东' })
     expect(project.code, project.msg).toBe(200)
     const target = (await mockService.options('service-target-dealers', { deviceSN: device.code })).data[0]!
     const created = await mockService.create('service-transfer', { code: 'TRF-AUTO-01', deviceSN: device.code, targetDealerId: target.value, summary: '调整售后服务网点' })
@@ -663,9 +743,8 @@ describe('RuoYi-compatible mock service', () => {
     const device = (await mockService.all('devices')).data[0]
     expect((await mockService.action('devices', device.id, 'remote-disable', {})).code).toBe(422)
     expect((await mockService.action('devices', device.id, 'change-region', { country: '', region: '', reason: '' })).code).toBe(422)
-    const created = await mockService.create('devices', { code: 'DE-AUTO-DEVICE-01', name: '制冰机 CI-02', region: '德国 · 汉堡' })
-    expect(created.code, created.msg).toBe(200)
-    expect(created.data?.country).toBe('德国')
+    const created = await distributeDevice('DE-AUTO-DEVICE-01', '德国 · 汉堡')
+    expect(created.country).toBe('德国')
     const project = (await mockService.all('projects')).data[0]
     expect((await mockService.remove('projects', project.id, '')).code).toBe(422)
   })

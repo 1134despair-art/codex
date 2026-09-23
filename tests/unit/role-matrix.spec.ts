@@ -7,22 +7,22 @@ import { useAuthStore } from '@/stores/auth'
 
 const expectedMenus = {
   platform: [
-    'dashboard', 'users', 'dealers', 'projects', 'installation-transfers', 'cross-region-activations', 'product-catalog', 'devices', 'ota',
-    'product-purchase', 'warehouses', 'warehouse', 'material-catalog',
-    'repairs', 'messages', 'complaints', 'materials', 'issuance', 'sn-replacement', 'service-transfer',
-    'approval-center', 'warranty', 'couriers', 'after-sales-types', 'approval-flow',
-    'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
+    'dashboard', 'approval-center', 'users', 'dealers', 'projects', 'installation-transfers', 'cross-region-activations', 'product-catalog', 'devices', 'ota',
+    'product-purchase', 'materials', 'material-catalog', 'contracts', 'purchase-shipping', 'couriers', 'warehouses', 'warehouse',
+    'repairs', 'messages', 'complaints', 'issuance', 'sn-replacement', 'service-transfer',
+    'warranty', 'after-sales-types', 'approval-flow',
+    'contracts', 'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
   ],
   tier1: [
     'dashboard', 'users', 'dealers', 'projects', 'product-catalog', 'devices',
-    'product-purchase', 'warehouse', 'material-catalog',
-    'repairs', 'messages', 'complaints', 'materials', 'issuance', 'sn-replacement', 'service-transfer',
-    'warranty', 'couriers', 'approval-flow', 'payments',
+    'product-purchase', 'materials', 'material-catalog', 'contracts', 'couriers', 'warehouse',
+    'repairs', 'messages', 'complaints', 'issuance', 'sn-replacement', 'service-transfer',
+    'warranty', 'approval-flow', 'contracts', 'payments',
   ],
   tier2: [
-    'dashboard', 'projects', 'product-catalog', 'devices', 'product-purchase', 'warehouse', 'material-catalog',
-    'repairs', 'messages', 'complaints', 'materials', 'issuance', 'sn-replacement',
-    'service-transfer', 'warranty', 'couriers', 'payments',
+    'dashboard', 'projects', 'product-catalog', 'devices', 'product-purchase', 'materials', 'material-catalog', 'contracts', 'couriers', 'warehouse',
+    'repairs', 'messages', 'complaints', 'issuance', 'sn-replacement',
+    'service-transfer', 'warranty', 'contracts', 'payments',
   ],
 } as const
 

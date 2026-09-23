@@ -23,7 +23,7 @@ export const LEGACY_DATABASE_KEY = 'shark-sister-admin.db.v1'
 
 const now = () => new Date().toISOString()
 const approvalMenuLabels: Record<string, string> = {
-  materials: '物料采购',
+  materials: '售后物料采购',
   warehouse: '仓库设备（调货审批）',
   'service-transfer': '售后转移（费用审批）',
 }
@@ -123,6 +123,8 @@ function normalizeProductPurchasePermissions(records: Record<string, EntityRecor
     if (permissions.includes('materials:view')) additions.push('product-purchase:view')
     if (permissions.includes('materials:create')) additions.push('product-purchase:create')
     if (permissions.includes('materials:export')) additions.push('product-purchase:export')
+    if (permissions.includes('product-purchase:view') || permissions.includes('materials:view')) additions.push('contracts:view')
+    if (permissions.includes('product-purchase:export') || permissions.includes('materials:export')) additions.push('contracts:export')
     role.permissions = [...new Set([...permissions, ...additions])]
     role.permissionCount = (role.permissions as string[]).length
   }
@@ -242,6 +244,7 @@ function normalizeBusinessRecords(records: Record<string, EntityRecord[]>) {
     repair.dealer = String(repair.dealer || dealer?.name || device?.owner || repair.owner || '待确认')
     repair.responsibilityDealerId ||= repair.dealerId
     repair.responsibilityDealer ||= repair.dealer
+    repair.userConfirmationLabel ||= repair.userConfirmationStatus === 'confirmed' ? '用户已确认' : repair.userConfirmationStatus === 'pending' ? '待用户确认' : '历史未记录'
   }
   let stockDevices = records.devices.filter((item) => item.inventoryStatus === 'in_stock' || item.ownerId === 'platform')
   if (!stockDevices.length) {
@@ -330,7 +333,7 @@ function normalizeApprovalFlows(records: Record<string, EntityRecord[]>) {
     return 'materials'
   }
   const definitions: Record<string, { name: string; businessFlow: string; levels: string; members: EntityRecord[] }> = {
-    materials: { name: '物料采购审批流程', businessFlow: '申请 → 销售确认 → 研发确认 → 导入生产 → 财务核实 → 仓库发货 → 收货确认', levels: '一级 → 平台', members: [tier1, platform].filter(Boolean) as EntityRecord[] },
+    materials: { name: '物料采购审批流程', businessFlow: '申请 → 销售确认 → 研发确认 → 导入生产 → 生产完成 → 财务核实付清 → 仓库发货 → 收货确认', levels: '一级 → 平台', members: [tier1, platform].filter(Boolean) as EntityRecord[] },
     warehouse: { name: '仓库调货审批流程', businessFlow: '调货申请 → 审核 → 调货完成', levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
     'service-transfer': { name: '售后转移费用审批流程', businessFlow: '发起转移 → 接收方确认 → 费用审核（如有） → 完成', levels: '平台直接审核', members: [platform].filter(Boolean) as EntityRecord[] },
   }
@@ -503,21 +506,24 @@ function normalizeCustomerFeedbackAdjustments(records: Record<string, EntityReco
 
 function normalizeMeetingAdjustments(records: Record<string, EntityRecord[]>) {
   records['product-catalog'] ||= []
-  deviceCatalog.forEach((item, index) => {
-    const exists = records['product-catalog'].some((record) => record.deviceModel === item.deviceModel || record.descriptor === item.descriptor)
-    if (exists) return
-    records['product-catalog'].push(entity('product-catalog', index, {
-      id: `product-catalog-${index + 1}`,
-      code: `PROD-${String(index + 1).padStart(3, '0')}`,
-      name: item.deviceName,
-      deviceType: item.deviceType,
-      deviceModel: item.deviceModel,
-      specification: item.specification,
-      descriptor: item.descriptor,
-      referencePrice: [68000, 92000, 118000, 36000, 12800][index] || 0,
-      status: 'normal', owner: '平台中心', ownerId: 'platform', domain: 'cn',
-    }))
-  })
+  for (const domain of ['cn', 'global'] as const) {
+    deviceCatalog.forEach((item, index) => {
+      const exists = records['product-catalog'].some((record) => record.domain === domain && (record.deviceModel === item.deviceModel || record.descriptor === item.descriptor))
+      if (exists) return
+      records['product-catalog'].push(entity('product-catalog', index, {
+        id: `product-catalog-${domain}-${index + 1}`,
+        code: `PROD-${domain === 'cn' ? 'CN' : 'GL'}-${String(index + 1).padStart(3, '0')}`,
+        name: item.deviceName,
+        deviceType: item.deviceType,
+        deviceModel: item.deviceModel,
+        specification: item.specification,
+        descriptor: item.descriptor,
+        referencePrice: [68000, 92000, 118000, 36000, 12800][index] || 0,
+        currency: domain === 'global' ? 'USD' : 'CNY',
+        status: 'normal', owner: domain === 'global' ? 'Global Operations' : '平台中心', ownerId: 'platform', domain,
+      }))
+    })
+  }
   records['price-history'] ||= []
   records['app-versions'] ||= [entity('app-versions', 0, {
     id: 'app-version-1', code: 'APP-V3.2.0', name: '3.2.0', platform: 'iOS / Android',
@@ -752,7 +758,7 @@ function normalizeProcurementRecords(records: Record<string, EntityRecord[]>) {
       request.quantity = purchaseItems.reduce((sum, item) => sum + Math.max(1, Number(item.quantity || 1)), 0)
       request.estimatedUnitPrice = purchaseItems.length === 1 ? Number(purchaseItems[0].unitPrice || estimatedUnitPrice) : 0
       request.amount = Math.round(purchaseItems.reduce((sum, item) => sum + Number(item.subtotal || Number(item.quantity || 1) * Number(item.unitPrice || 0)), 0) * 100) / 100
-      request.currency = 'CNY'
+      request.currency ||= request.domain === 'global' ? 'USD' : 'CNY'
       request.paymentStatus ||= records['expense-records'].some((item) => item.subjectId === request.id) ? '已登记' : '未登记'
       request.deviceSN = '-'
       request.warrantyResult = '不适用'
@@ -763,7 +769,7 @@ function normalizeProcurementRecords(records: Record<string, EntityRecord[]>) {
           itemType: item.itemType || '设备', itemId: item.itemId || '', itemName: item.itemName,
           quantity: Math.max(1, Number(item.quantity || 1)), unitPrice: Number(item.unitPrice || 0),
           subtotal: Number(item.subtotal || Number(item.quantity || 1) * Number(item.unitPrice || 0)),
-          status: request.status, owner: request.owner, ownerId: request.ownerId, domain: request.domain,
+          currency: request.currency, status: request.status, owner: request.owner, ownerId: request.ownerId, domain: request.domain,
         }))
       }
       delete request.materialId
@@ -779,7 +785,7 @@ function normalizeProcurementRecords(records: Record<string, EntityRecord[]>) {
     request.itemName = catalog.name
     request.unitPrice = Number(catalog.price || 0)
     request.amount = Math.round(Number(request.quantity || 0) * Number(catalog.price || 0) * 100) / 100
-    request.currency = 'CNY'
+    request.currency ||= request.domain === 'global' ? 'USD' : 'CNY'
   }
 
   if (!records.materials.some((item) => item.category === '设备采购')) {
@@ -812,7 +818,7 @@ function normalizeProcurementRecords(records: Record<string, EntityRecord[]>) {
 function normalizeV15Adjustments(records: Record<string, EntityRecord[]>) {
   const headquartersRole = records.roles?.find((item) => item.roleKey === 'custom' && item.name === '总部售后')
   if (headquartersRole) {
-    const requiredPermissions = ['approval-center:view', 'approval-center:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view', 'warehouse:export', 'purchase-shipping:view', 'purchase-shipping:export', 'materials:start-production', 'materials:finance-confirm', 'materials:purchase-ship', 'materials:confirm-purchase-receipt', 'issuance:confirm-receipt', 'payments:view', 'payments:finance-verify', 'payments:export', 'cross-region-activations:resolve']
+    const requiredPermissions = ['approval-center:view', 'approval-center:export', 'warehouses:view', 'warehouse-locations:view', 'warehouse:view', 'warehouse:export', 'purchase-shipping:view', 'purchase-shipping:export', 'materials:start-production', 'materials:complete-production', 'materials:finance-confirm', 'materials:purchase-ship', 'materials:confirm-purchase-receipt', 'issuance:confirm-receipt', 'payments:view', 'payments:finance-verify', 'payments:export', 'cross-region-activations:resolve']
     const permissions = Array.isArray(headquartersRole.permissions) ? headquartersRole.permissions.map(String) : []
     const mergedPermissions = [...new Set([...permissions, ...requiredPermissions])]
     headquartersRole.permissions = mergedPermissions
@@ -947,8 +953,12 @@ function normalizeV15Adjustments(records: Record<string, EntityRecord[]>) {
     } else if (request.status === 'shipped') {
       request.purchaseStage = 'shipped'
       request.purchaseStageLabel = '已发货'
-    } else if (['sales_confirmation', 'rd_confirmation', 'production', 'finance_confirmation', 'warehouse_fulfillment'].includes(currentStage)) {
-      request.purchaseStageLabel = ({ sales_confirmation: '待销售确认', rd_confirmation: '待研发确认', production: '待导入生产', finance_confirmation: '待财务核实', warehouse_fulfillment: '待仓库发货' } as Record<string, string>)[currentStage]
+    } else if (currentStage === 'warehouse_fulfillment' && Number(request.paidAmount || 0) + 0.01 < Number(request.orderAmount || request.amount || 0)) {
+      request.purchaseStage = 'finance_confirmation'
+      request.purchaseStageLabel = '待财务核实'
+      request.deliveryStatus = '待付清'
+    } else if (['sales_confirmation', 'rd_confirmation', 'production', 'production_in_progress', 'finance_confirmation', 'warehouse_fulfillment'].includes(currentStage)) {
+      request.purchaseStageLabel = ({ sales_confirmation: '待销售确认', rd_confirmation: '待研发确认', production: '待导入生产', production_in_progress: '生产中', finance_confirmation: '待财务核实', warehouse_fulfillment: '待仓库发货' } as Record<string, string>)[currentStage]
     } else if (request.status === 'approved' && (request.paymentStatus === '已登记' || request.warehouseDecision === 'release')) {
       request.purchaseStage = 'warehouse_fulfillment'
       request.purchaseStageLabel = '待仓库发货'
@@ -1691,6 +1701,17 @@ export function migrateDatabase(source?: { version?: number; records?: Record<st
   normalizeCustomerFeedbackAdjustments(seed.records)
   normalizeDocumentIssueAdjustments(seed.records)
   normalizeDeviceBusinessLinks(seed.records)
+  for (const replacement of seed.records['sn-replacement'] || []) {
+    if (replacement.category === '换 SN 记录') replacement.category = '维修物料替换'
+  }
+  for (const product of seed.records['product-catalog'] || []) {
+    const legacyPrice = Number(product.referencePrice || 0)
+    product.tier1Price = Number(product.tier1Price ?? legacyPrice)
+    product.retailPrice = Number(product.retailPrice ?? legacyPrice)
+    product.tier1PriceName ||= '一级经销商价'
+    product.retailPriceName ||= '终端零售价'
+    product.referencePrice = Number(product.tier1Price)
+  }
   seed.version = 15
   seed.updatedAt = now()
   return seed

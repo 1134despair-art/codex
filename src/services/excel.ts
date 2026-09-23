@@ -38,6 +38,19 @@ export interface MaterialImportRow {
   error: string
 }
 
+export interface ProductImportRow {
+  row: number
+  code: string
+  name: string
+  deviceType: string
+  deviceModel: string
+  specification: string
+  retailPrice: number
+  tier1Price: number
+  valid: boolean
+  error: string
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -176,6 +189,69 @@ export async function downloadMaterialTemplate() {
   sheet.addRow({ materialCode: 'MAT-1001', name: '制冰机密封组件', category: '制冰机 CI-02', price: 168, stock: 20 })
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), '物料导入模板.xlsx')
+}
+
+const productHeaders = ['产品编号', '产品名称', '设备类型', '设备型号', '规格', '终端零售价', '一级经销商价']
+
+export function parseProductText(text: string, existing: EntityRecord[]) {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim())
+  const header = lines.shift() || ''
+  const separator = header.includes('\t') ? '\t' : ','
+  const headers = header.split(separator).map((cell) => cell.trim())
+  const indexes = productHeaders.map((name) => headers.indexOf(name))
+  if (indexes.some((index) => index < 0)) throw new Error(`文本首行必须包含${productHeaders.join('、')}七列。`)
+  const source = lines.map((line, index) => {
+    const cells = line.split(separator).map((cell) => cell.trim())
+    return { row: index + 2, values: indexes.map((position) => cells[position] || '') }
+  })
+  return validateProductRows(source, existing)
+}
+
+export async function parseProductFile(file: File, existing: EntityRecord[]) {
+  if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt')) return parseProductText(await file.text(), existing)
+  const source: Array<{ row: number; values: string[] }> = []
+  {
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(await file.arrayBuffer())
+    const sheet = workbook.worksheets[0]
+    if (!sheet) throw new Error('Excel 文件中没有工作表。')
+    const headers = (sheet.getRow(1).values as unknown[]).map((value) => String(value || '').trim())
+    const indexes = productHeaders.map((header) => headers.indexOf(header))
+    if (indexes.some((index) => index < 1)) throw new Error(`文件必须包含${productHeaders.join('、')}七列。`)
+    sheet.eachRow((row, index) => { if (index > 1) source.push({ row: index, values: indexes.map((position) => row.getCell(position).text.trim()) }) })
+  }
+  return validateProductRows(source, existing)
+}
+
+function validateProductRows(source: Array<{ row: number; values: string[] }>, existing: EntityRecord[]) {
+  const codes = new Set(existing.map((item) => String(item.code)))
+  const models = new Set(existing.map((item) => String(item.deviceModel)))
+  return source.map(({ row, values }): ProductImportRow => {
+    const [code, name, deviceType, deviceModel, specification, retail, tier1] = values
+    const errors: string[] = []
+    if (!code || codes.has(code)) errors.push('产品编号为空、已存在或文件内重复')
+    if (!name || !deviceType || !specification) errors.push('产品名称、设备类型和规格不能为空')
+    if (!deviceModel || models.has(deviceModel)) errors.push('设备型号为空、已存在或文件内重复')
+    if (!retail.trim() || !Number.isFinite(Number(retail)) || Number(retail) <= 0) errors.push('终端零售价必须大于 0')
+    if (!tier1.trim() || !Number.isFinite(Number(tier1)) || Number(tier1) <= 0) errors.push('一级经销商价必须大于 0')
+    if (code) codes.add(code)
+    if (deviceModel) models.add(deviceModel)
+    return { row, code, name, deviceType, deviceModel, specification, retailPrice: Number(retail), tier1Price: Number(tier1), valid: !errors.length, error: errors.join('；') }
+  })
+}
+
+export async function downloadProductTemplate() {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('产品导入模板')
+  sheet.columns = [
+    { header: '产品编号', key: 'code', width: 20 }, { header: '产品名称', key: 'name', width: 22 },
+    { header: '设备类型', key: 'deviceType', width: 22 }, { header: '设备型号', key: 'deviceModel', width: 20 },
+    { header: '规格', key: 'specification', width: 28 }, { header: '终端零售价', key: 'retailPrice', width: 18 },
+    { header: '一级经销商价', key: 'tier1Price', width: 18 },
+  ]
+  sheet.addRow({ code: 'PROD-1001', name: '顶流机', deviceType: '船载设备', deviceModel: 'TF-1001', specification: '24V 智能推流', retailPrice: 80000, tier1Price: 68000 })
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), '产品导入模板.xlsx')
 }
 
 export async function parseOutboundFile(file: File, availableDevices: EntityRecord[]) {

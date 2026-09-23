@@ -58,7 +58,7 @@ describe('business workflow closure', () => {
     })
   })
 
-  it('lets finance explicitly release a partially paid procurement order', async () => {
+  it('keeps partial procurement payments on one parent bill and ships only after full payment', async () => {
     const database = useDatabaseStore()
     const order = database.create('materials', {
       code: 'PUR-SPLIT-001', name: '分次付款采购单', category: '设备采购', amount: 1000,
@@ -70,6 +70,12 @@ describe('business workflow closure', () => {
       paymentProof: 'data:image/png;base64,AA==', paymentReference: 'BANK-SPLIT-001', paidAt: '2026-09-16', warehouseDecision: 'hold', paymentNote: '首笔款待复核',
     })
     expect(first.data).toMatchObject({ paidAmount: 400, remainingAmount: 600, paymentStatus: '已核实部分付款', purchaseStage: 'finance_confirmation' })
+    expect((await mockService.action('materials', order.id, 'finance-confirm', {
+      contractStatus: '已签订', contractNo: 'CONTRACT-SPLIT-001', paidAmount: 100, paymentProof: 'data:image/png;base64,CC==',
+      paymentReference: 'BANK-SPLIT-RELEASE', paidAt: '2026-09-17', warehouseDecision: 'release', paymentNote: '未付清不放行',
+    })).code).toBe(409)
+    expect(database.records('expense-records').filter((item) => item.subjectId === order.id)).toHaveLength(1)
+    expect((await mockService.action('materials', order.id, 'purchase-ship', {})).code).toBe(409)
 
     const second = await mockService.action('materials', order.id, 'finance-confirm', {
       contractStatus: '已签订', contractNo: 'CONTRACT-SPLIT-001', paidAmount: 600,
@@ -84,23 +90,47 @@ describe('business workflow closure', () => {
     expect(allShipping.rows).toContainEqual(expect.objectContaining({ id: order.id }))
     expect(allShipping.rows.every((item) => item.category === '设备采购')).toBe(true)
     expect(database.records('expense-records').filter((item) => item.subjectId === order.id)).toHaveLength(2)
-    expect(database.records('payments').filter((item) => item.subjectId === order.id)).toHaveLength(2)
+    const bills = database.records('payments').filter((item) => item.subjectId === order.id && item.sourceType === 'purchase')
+    expect(bills).toHaveLength(1)
+    expect(bills[0]).toMatchObject({ code: order.code, paidAmount: 1000, remainingAmount: 0, paymentCount: 2, status: 'verified' })
+    expect(database.records('payment-transactions').filter((item) => item.paymentId === bills[0].id && item.status === 'verified')).toHaveLength(2)
   })
 
   it('moves shipped material through receipt and closes its source request after replacement', async () => {
     const database = useDatabaseStore()
     const repair = database.records('repairs')[0]
     const request = database.create('materials', {
-      code: 'MAT-CLOSE-001', name: '售后物料闭环', category: '普通申请', deviceSN: repair.deviceSN,
+      code: 'MAT-CLOSE-001', name: '售后物料闭环', category: '普通申请', repairId: repair.id, deviceSN: repair.deviceSN,
       status: 'shipped', owner: repair.owner, ownerId: repair.ownerId, domain: repair.domain,
+    })
+    const pendingRequest = database.create('materials', {
+      code: 'MAT-CLOSE-PENDING', name: '未发货的关联申请', category: '普通申请', repairId: repair.id, deviceSN: repair.deviceSN,
+      status: 'approved', owner: repair.owner, ownerId: repair.ownerId, domain: repair.domain,
     })
     const issuance = database.create('issuance', {
       code: 'ISS-CLOSE-001', name: '售后物料闭环', materialName: '替换部件', deviceSN: repair.deviceSN,
-      sourceRequestId: request.id, sourceRequestCode: request.code, status: 'shipped',
+      sourceRequestId: request.id, sourceRequestCode: request.code, repairId: repair.id, status: 'shipped',
       owner: repair.owner, ownerId: repair.ownerId, domain: repair.domain,
     })
+    const secondIssuance = database.create('issuance', {
+      code: 'ISS-CLOSE-002', name: '同工单第二件物料', materialName: '第二件物料', deviceSN: repair.deviceSN,
+      repairId: repair.id, status: 'shipped', owner: repair.owner, ownerId: repair.ownerId, domain: repair.domain,
+    })
 
+    database.update('repairs', repair.id, { status: 'processing' })
+    expect((await mockService.action('repairs', repair.id, 'escalate', { reason: '总部接手物料闭环' })).code).toBe(200)
+    expect((await mockService.action('repairs', repair.id, 'complete', { result: '换料未签收' })).code).toBe(409)
+    expect((await mockService.action('issuance', issuance.id, 'complete-replacement', {
+      repairId: repair.id, oldPartSerial: 'OLD-EARLY', newPartSerial: 'NEW-EARLY', reason: '提前更换',
+    })).code).toBe(409)
     expect((await mockService.action('issuance', issuance.id, 'confirm-receipt', { reason: '已签收' })).data?.status).toBe('received')
+    expect((await mockService.action('repairs', repair.id, 'complete', { result: '仍有一件在途' })).code).toBe(409)
+    expect((await mockService.action('issuance', secondIssuance.id, 'confirm-receipt', { reason: '第二件已签收' })).data?.status).toBe('received')
+    expect((await mockService.action('repairs', repair.id, 'complete', { result: '关联申请仍未发货' })).code).toBe(409)
+    database.update('materials', pendingRequest.id, { status: 'rejected' })
+    const completedRepair = await mockService.action('repairs', repair.id, 'complete', { result: '关联物料已签收' })
+    expect(completedRepair.code, completedRepair.msg).toBe(200)
+    expect(completedRepair.data?.status).toBe('completed')
     expect((await mockService.action('issuance', issuance.id, 'complete-replacement', {
       repairId: repair.id, oldPartSerial: 'OLD-CLOSE-001', newPartSerial: 'NEW-CLOSE-001', reason: '换件完成',
     })).data?.status).toBe('completed')

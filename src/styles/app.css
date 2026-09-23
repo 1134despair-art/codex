@@ -319,7 +319,6 @@ small { font-size: var(--font-size-xs); line-height: var(--line-height-xs); }
 .related-stats article { padding: 12px; border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--neutral-25); }
 .related-stats span, .related-stats strong { display: block; }.related-stats span { color: var(--color-text-tertiary); font-size: var(--font-size-xs); line-height: var(--line-height-xs); }.related-stats strong { margin-top: 4px; font-size: 18px; }
 .detail-dialog-footer { display: flex; min-height: 40px; align-items: center; gap: 8px; text-align: left; }
-.detail-dialog-footer div { min-width: 0; flex: 1; }.detail-dialog-footer p { margin: 2px 0 0; color: var(--color-text-tertiary); font-size: var(--font-size-xs); line-height: var(--line-height-xs); }
 .impact-callout { display: flex; gap: 12px; margin-bottom: 20px; padding: 14px; color: var(--color-error-hover); border: 1px solid var(--color-error-border); border-radius: var(--radius-md); background: var(--color-error-bg); }
 .impact-callout.info { color: var(--color-brand-primary); border-color: var(--color-info-border); background: var(--color-info-bg); }
 .impact-callout p { margin: 3px 0 0; color: var(--color-text-secondary); }
@@ -410,9 +409,36 @@ small { font-size: var(--font-size-xs); line-height: var(--line-height-xs); }
 .line-item-row .el-select, .line-item-row .el-input-number { width: 100%; }
 .component-items-editor { display: grid; width: 100%; gap: 10px; }
 .component-item-row { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) 38px; gap: 8px; align-items: center; }
+.price-items-editor { display: grid; width: 100%; gap: 10px; }
+.price-item-row { display: grid; grid-template-columns: minmax(180px, 1fr) 160px 38px; gap: 8px; align-items: center; }
+.price-item-row .el-input-number { width: 100%; }
 
 @media (max-width: 1279px) {
   .domain-filter-control { width: 176px; }
   .domain-date-filter { width: 230px !important; }
 }
-@media (max-width: 760px) { .line-item-row, .component-item-row { grid-template-columns: 1fr 1fr; } .line-item-row .el-select, .component-item-row .el-input:first-child { grid-column: 1 / -1; } }
+@media (max-width: 760px) { .line-item-row, .component-item-row, .price-item-row { grid-template-columns: 1fr 1fr; } .line-item-row .el-select, .component-item-row .el-input:first-child, .price-item-row .el-input:first-child { grid-column: 1 / -1; } }
+.dealer-qr-selector { display: grid; gap: 10px; width: 100%; }
+.dealer-qr-selector-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(160px, 1.25fr) auto; gap: 8px; }
+.dealer-qr-selector-row .el-select, .dealer-qr-selector-row .el-input { min-width: 0; }
+.dealer-qr-selector-row .el-button { flex: none; }
+.dealer-qr-selector small { color: #667085; }
+.dealer-qr-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dealer-qr-list { min-width: 0; border: 1px solid var(--color-border-default); border-radius: 4px; }
+.dealer-qr-list-header { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--color-border-default); font-weight: 600; }
+.dealer-qr-list-header span { color: #667085; font-weight: 400; white-space: nowrap; }
+.dealer-qr-list-body { height: 216px; overflow-y: auto; }
+.dealer-qr-item { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--color-border-default); }
+.dealer-qr-item:last-child { border-bottom: 0; }
+.dealer-qr-item > span { min-width: 0; overflow-wrap: anywhere; }
+.dealer-qr-item strong, .dealer-qr-item small { display: block; line-height: 18px; }
+.dealer-qr-item strong { font-weight: 500; }
+.dealer-qr-item .el-button { flex: none; width: 28px; height: 28px; }
+.dealer-qr-empty { padding: 40px 12px; color: #667085; text-align: center; }
+@media (max-width: 600px) {
+  .payment-config-dialog { max-width: calc(100vw - 24px); }
+  .payment-config-dialog .entity-form { grid-template-columns: minmax(0, 1fr); }
+  .dealer-qr-selector-row, .dealer-qr-lists { grid-template-columns: minmax(0, 1fr); }
+  .dealer-qr-list-body { height: 160px; }
+}
+.price-alias { display: block; color: #667085; font-size: 11px; line-height: 16px; font-weight: 400; }

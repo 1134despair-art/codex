@@ -13,7 +13,7 @@ describe('customer feedback admin adjustments', () => {
   })
 
   it('combines warehouse and location navigation without exposing delete actions', () => {
-    const inventoryRoutes = navGroups.find((group) => group.label === '仓储与采购')!.items.map((item) => item.route)
+    const inventoryRoutes = navGroups.find((group) => group.label === '仓储管理')!.items.map((item) => item.route)
     expect(inventoryRoutes).toContain('warehouses')
     expect(inventoryRoutes).not.toContain('warehouse-locations')
     expect(moduleConfigs.warehouses.title).toBe('仓库 / 仓位管理')
@@ -57,15 +57,15 @@ describe('customer feedback admin adjustments', () => {
 
   it('uses the unified procurement business name in approval data', () => {
     const database = useDatabaseStore()
-    expect(moduleConfigs.materials.title).toBe('物料采购')
-    expect(database.records('approval-flow').filter((item) => item.menuKey === 'materials').every((item) => item.menuLabel === '物料采购')).toBe(true)
-    expect(database.records('approval-instances').filter((item) => item.menuKey === 'materials').every((item) => item.menuLabel === '物料采购')).toBe(true)
+    expect(moduleConfigs.materials.title).toBe('售后物料采购')
+    expect(database.records('approval-flow').filter((item) => item.menuKey === 'materials').every((item) => item.menuLabel === '售后物料采购')).toBe(true)
+    expect(database.records('approval-instances').filter((item) => item.menuKey === 'materials').every((item) => item.menuLabel === '售后物料采购')).toBe(true)
   })
 
   it('separates product purchasing from after-sales material fulfillment', async () => {
-    const purchaseRoutes = navGroups.find((group) => group.label === '仓储与采购')!.items.map((item) => item.route)
+    const purchaseRoutes = navGroups.find((group) => group.label === '采购管理')!.items.map((item) => item.route)
     expect(purchaseRoutes).toContain('product-purchase')
-    expect(purchaseRoutes).not.toContain('purchase-shipping')
+    expect(purchaseRoutes).toEqual(expect.arrayContaining(['materials', 'material-catalog', 'contracts', 'purchase-shipping', 'couriers']))
     expect(moduleConfigs.materials.tabs.map((tab) => tab.key)).not.toContain('purchase')
     expect(moduleConfigs['product-purchase'].tabs.map((tab) => tab.key)).toEqual(['all', 'approval', 'production', 'finance', 'shipping', 'shipped', 'completed', 'rejected'])
     const materialRows = await mockService.list('materials', { pageNum: 1, pageSize: 100, tab: 'all' })

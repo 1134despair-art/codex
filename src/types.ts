@@ -2,7 +2,7 @@ export type RoleKey = 'platform' | 'tier1' | 'tier2' | 'custom'
 export type DataDomain = 'cn' | 'global'
 export type DataScope = 'all' | 'descendants' | 'self'
 export type CrudMode = 'full' | 'managed' | 'workflow' | 'readonly'
-export type FieldType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'lineItems' | 'componentItems' | 'date' | 'number' | 'switch' | 'image' | 'firmware' | 'pdf' | 'password'
+export type FieldType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'lineItems' | 'componentItems' | 'priceItems' | 'date' | 'number' | 'switch' | 'image' | 'firmware' | 'pdf' | 'password'
 export type FilterType = 'text' | 'select' | 'dateRange'
 export type RequirementStatus = '通过' | '后端豁免' | '未通过'
 

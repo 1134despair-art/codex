@@ -32,6 +32,19 @@ const tabNavigation = computed(() => {
   const target = tabTargetModules[String(props.tab.source || '')]
   return target ? props.navigation.find((item) => item.targetModule === target) : undefined
 })
+function openRelatedRow(row: EntityRecord) {
+  const targetModule = String(row.sourceModule || '')
+  if (!moduleConfigs[targetModule] || !hasPermission(auth.permissions, moduleConfigs[targetModule].permission)) return
+  emit('navigate', {
+    key: `${targetModule}:${row.id}`,
+    targetModule,
+    label: '查看售后详情',
+    icon: moduleConfigs[targetModule].icon,
+    relationFilters: { id: row.id },
+    level: 'primary',
+    count: 1,
+  })
+}
 
 const internalFields = new Set(['id', 'ownerId', 'dealerId', 'domain', 'subjectId', 'subjectCode', 'requestType', 'replacementDeviceDescriptor', 'initiatorAccountId', 'initiatorRole', 'productId', 'warehouseId', 'warehouseLocationId', 'currentApproverId', 'currentApproverAccountId'])
 const labels: Record<string, string> = {
@@ -85,24 +98,32 @@ Object.assign(labels, {
   reviewDeadline: '审核截止时间',
   temporaryOperationUntil: '临时运行截止时间',
   temporaryUseStatusLabel: '临时运行状态',
+  repairId: '关联维修工单', sourceRequestCode: '来源申请单号', sourceLabel: '业务模块',
+  parentDealerId: '上级经销商', organizationId: '经销商编号',
+  retailPrice: '终端零售价', tier1Price: '一级经销商价', retailPriceName: '终端价格名称', tier1PriceName: '经销商价格名称',
+  productionCompletedAt: '生产完成日期', productionCompletedBy: '生产完成人', productionCompletionNote: '生产完成说明',
+  productionImportedAt: '导入生产时间', productionImportedBy: '导入生产人', productionNote: '生产说明',
+  paymentQrCode: '收款码编号', paymentQrAccountName: '收款户名',
+  applicableRegions: '适用地区', supplierName: '供应商', accountName: '收款户名',
 })
 
 const sourceRecord = computed(() => props.tab.source && rows.value[0] ? rows.value[0] : props.record)
 const fieldEntries = computed(() => {
   const config = moduleConfigs[props.moduleKey]
+  const labelFor = (field: string) => labels[field] || config.fields.find((item) => item.field === field)?.label || config.columns.find((item) => item.field === field)?.label || config.tabColumns?.[props.tab.key]?.find((item) => item.field === field)?.label
   const preferred = props.tab.key === 'overview'
     ? [...config.columns.map((item) => item.field), ...config.fields.filter((item) => !(item.sensitive && auth.session?.role !== 'platform')).map((item) => item.field)]
     : Object.keys(sourceRecord.value)
   return [...new Set(preferred)]
-    .filter((field) => !internalFields.has(field) && sourceRecord.value[field] !== undefined && sourceRecord.value[field] !== '')
-    .map((field) => ({ field, label: labels[field] || config.fields.find((item) => item.field === field)?.label || field, value: sourceRecord.value[field] }))
+    .filter((field) => !internalFields.has(field) && labelFor(field) && sourceRecord.value[field] !== undefined && sourceRecord.value[field] !== '')
+    .map((field) => ({ field, label: labelFor(field)!, value: sourceRecord.value[field] }))
 })
 
 function display(value: unknown) {
   if (value === true) return '是'
   if (value === false) return '否'
   if (value === null || value === undefined || value === '') return '-'
-  return Array.isArray(value) ? value.join('、') : String(value)
+  return Array.isArray(value) ? value.some((item) => typeof item === 'object') ? '详见关联明细' : value.join('、') : String(value)
 }
 
 function isStatusField(field: string) {
@@ -116,7 +137,7 @@ function isImageValue(value: unknown) {
 function displayField(field: string, value: unknown) {
   if (isStatusField(field)) return statusMeta(value).label
   if (field === 'account' && ['users', 'complaints'].includes(props.moduleKey)) return maskAccount(value)
-  if (['amount', 'orderAmount', 'paidAmount', 'remainingAmount', 'previousPaidAmount', 'currentPaymentAmount', 'paidAmountAfter', 'remainingAmountAfter', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee'].includes(field) && Number.isFinite(Number(value))) return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (['amount', 'orderAmount', 'paidAmount', 'remainingAmount', 'previousPaidAmount', 'currentPaymentAmount', 'paidAmountAfter', 'remainingAmountAfter', 'estimatedUnitPrice', 'actualUnitPrice', 'unitPrice', 'estimatedFee', 'actualFee', 'retailPrice', 'tier1Price'].includes(field) && Number.isFinite(Number(value))) return `${sourceRecord.value.currency === 'USD' || !sourceRecord.value.currency && auth.session?.domain === 'global' ? '$' : '¥'}${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   if (/(At|Date|Until)$/.test(field) && typeof value === 'string') return value.replace('T', ' ').replace('.000Z', '').slice(0, 19)
   return display(value)
 }
@@ -185,13 +206,16 @@ watch(() => [props.record.id, props.tab.key], load, { immediate: true })
             <span v-if="column.type === 'status'" class="status-chip" :data-tone="statusMeta(scope.row[column.field]).tone"><i></i>{{ statusMeta(scope.row[column.field]).label }}</span>
             <img v-else-if="column.type === 'image' && scope.row[column.field]" class="detail-table-image" :src="String(scope.row[column.field])" :alt="column.label">
             <code v-else-if="column.type === 'mono'" class="mono-cell">{{ display(scope.row[column.field]) }}</code>
-            <span v-else-if="column.type === 'money'" class="money-cell">¥{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
+            <span v-else-if="column.type === 'money'" class="money-cell">{{ scope.row.currency === 'USD' || !scope.row.currency && auth.session?.domain === 'global' ? '$' : '¥' }}{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
             <span v-else-if="isDate(column)">{{ display(scope.row[column.field]).replace('T', ' ').slice(0, 19) }}</span>
             <span v-else>{{ display(scope.row[column.field]) }}</span>
           </template>
         </el-table-column>
         <el-table-column v-if="tab.source === 'user-devices' && canUnbind" label="操作" width="96" fixed="right">
           <template #default="scope"><el-button link type="danger" @click="emit('action', { moduleKey: 'devices', action: 'unbind', record: scope.row })">强制解绑</el-button></template>
+        </el-table-column>
+        <el-table-column v-if="tab.source === 'dealer-service'" label="操作" width="106" fixed="right">
+          <template #default="scope"><el-button v-if="moduleConfigs[String(scope.row.sourceModule)] && hasPermission(auth.permissions, moduleConfigs[String(scope.row.sourceModule)].permission)" link type="primary" @click="openRelatedRow(scope.row)">查看详情</el-button></template>
         </el-table-column>
         <template #empty><div class="detail-empty"><AppIcon name="inbox" :size="28" /><strong>暂无{{ tab.label }}</strong><p>当前记录还没有关联数据。</p></div></template>
       </el-table>
