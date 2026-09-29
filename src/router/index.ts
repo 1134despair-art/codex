@@ -8,6 +8,7 @@ const AppShell = () => import('@/components/AppShell.vue')
 const DashboardView = () => import('@/views/DashboardView.vue')
 const ModuleView = () => import('@/views/ModuleView.vue')
 const ConfigView = () => import('@/views/ConfigView.vue')
+const LaunchConfigView = () => import('@/views/LaunchConfigView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const moduleRoutes: RouteRecordRaw[] = Object.values(moduleConfigs).map((config) => ({
@@ -30,6 +31,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'analytics', redirect: '/dashboard' },
       ...moduleRoutes,
       { path: 'payment-settings', name: 'payment-settings', component: ConfigView, meta: { permission: 'payment-settings:view', title: '支付配置' } },
+      { path: 'launch-settings', name: 'launch-settings', component: LaunchConfigView, meta: { permission: 'launch-settings:view', title: 'APP 启动页' } },
       { path: '403', name: 'forbidden', component: NotFoundView, props: { forbidden: true } },
       { path: ':pathMatch(.*)*', name: 'not-found', component: NotFoundView },
     ],

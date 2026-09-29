@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import AppIcon from '@/components/AppIcon.vue'
+import { hasPermission } from '@/config/permissions'
+import { exportRecords } from '@/services/excel'
 import { mockService } from '@/services/mock'
+import { useAuthStore } from '@/stores/auth'
 import type { EntityRecord } from '@/types'
 
 interface LocalConfigField {
@@ -15,6 +18,7 @@ interface LocalConfigField {
 }
 
 const route = useRoute()
+const auth = useAuthStore()
 const activeTab = ref('base')
 const records = ref<EntityRecord[]>([])
 const loading = ref(false)
@@ -29,6 +33,7 @@ const page = {
 const moduleKey = 'payment-settings'
 const categoryMap: Record<string, string> = { channels: '支付渠道', merchant: '商户配置' }
 const currentCategory = computed(() => categoryMap[activeTab.value] || '')
+const canExport = computed(() => hasPermission(auth.permissions, `${moduleKey}:export`))
 const configFields = computed<LocalConfigField[]>(() => {
   const common: LocalConfigField[] = [{ field: 'name', label: '配置名称', type: 'text', required: true }]
   if (activeTab.value === 'channels') return []
@@ -72,6 +77,13 @@ async function toggle(record: EntityRecord) {
   await load()
 }
 
+async function exportCurrent() {
+  const response = await mockService.exportRows(moduleKey, { pageNum: 1, pageSize: 10, tab: activeTab.value, filters: { category: currentCategory.value } })
+  if (response.code !== 200) return ElMessage.error(response.msg)
+  await exportRecords(`${page.title}-${page.tabs.find((item) => item.key === activeTab.value)?.label}`, response.data)
+  ElMessage.success(`已导出 ${response.data.length} 条当前配置`)
+}
+
 function prototypeEvent(event: Event) {
   const { action, tab } = (event as CustomEvent<{ action?: string; tab?: string }>).detail || {}
   if (tab && page.tabs.some((item) => item.key === tab)) activeTab.value = tab
@@ -94,6 +106,7 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', prototypeEven
   <section class="module-page config-page">
     <header class="page-heading">
       <div><div class="eyebrow">{{ page.eyebrow }}</div><h1>{{ page.title }}</h1><p>{{ page.description }}</p></div>
+      <el-button v-if="canExport" @click="exportCurrent"><AppIcon name="download" :size="16" />导出当前配置</el-button>
     </header>
     <div v-loading="loading" class="page-panel config-panel">
       <el-tabs v-model="activeTab" class="module-tabs"><el-tab-pane v-for="tab in page.tabs" :key="tab.key" :label="tab.label" :name="tab.key" /></el-tabs>

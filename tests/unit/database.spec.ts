@@ -25,16 +25,62 @@ describe('database store', () => {
     store.reset()
     expect(store.records('devices').length).toBeGreaterThanOrEqual(9)
     expect(store.records('warehouse').filter((item) => item.category === '在库').length).toBeGreaterThanOrEqual(4)
-    expect(store.database.version).toBe(8)
+    expect(store.database.version).toBe(15)
     expect(store.records('logs').length).toBeGreaterThan(0)
+    expect(store.records('users').some((item) => item.category === 'APPID')).toBe(true)
+    expect(store.records('device-components').length).toBeGreaterThan(0)
+    expect(store.records('project-history').length).toBeGreaterThanOrEqual(store.records('projects').length)
   })
 
-  it('automatically migrates the current v7 browser database and preserves user records', () => {
-    localStorage.setItem(PREVIOUS_DATABASE_KEY, JSON.stringify({ version: 7, records: { projects: [{ id: 'legacy-project', code: 'OLD-001', name: '保留项目', ownerId: 'platform', status: 'normal', domain: 'cn', createdAt: '2026-01-01', updatedAt: '2026-01-01' }] } }))
+  it('migrates legacy data to v15 without duplicating child materials or project snapshots', () => {
+    const current = migrateDatabase()
+    const first = migrateDatabase({ version: 12, records: current.records })
+    const second = migrateDatabase(first)
+    expect(first.version).toBe(15)
+    expect(second.records['device-components']).toHaveLength(first.records['device-components'].length)
+    expect(second.records['project-history']).toHaveLength(first.records['project-history'].length)
+    expect(new Set(second.records['device-components'].map((item) => item.serialNumber)).size).toBe(second.records['device-components'].length)
+  })
+
+  it('migrates v13 privacy and client configuration data into the v15 model', () => {
+    const legacy = migrateDatabase()
+    const user = legacy.records.users[0]
+    legacy.records.waypoints = [
+      { id: 'local-waypoint', code: 'WPT-LOCAL', name: '仅本机航点', userId: user.id, serverSaved: false, storageMode: 'local', ownerId: 'platform', domain: 'cn', status: 'normal', createdAt: '2026-08-01', updatedAt: '2026-08-01' },
+      { id: 'server-waypoint', code: 'WPT-SERVER', name: '服务器航点', userId: user.id, serverSaved: true, storageMode: 'server', ownerId: 'platform', domain: 'cn', status: 'normal', createdAt: '2026-08-01', updatedAt: '2026-08-01' },
+    ]
+    legacy.records['support-settings'] = []
+    legacy.records['after-sales-types'] = []
+
+    const migrated = migrateDatabase({ version: 13, records: legacy.records })
+    expect(migrated.version).toBe(15)
+    expect(migrated.records.waypoints.map((item) => item.id)).toEqual(['server-waypoint'])
+    expect(migrated.records.waypoints[0]).toMatchObject({ serverSaved: true, storageMode: 'server', adminVisible: false })
+    expect(migrated.records['support-settings'].length).toBeGreaterThan(0)
+    expect(migrated.records['after-sales-types'].length).toBeGreaterThan(0)
+    expect((migrated.records['launch-settings'][0].onboardingPages as unknown[]).length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('repairs duplicate device SN values and keeps scoped project relations aligned', () => {
+    const legacy = migrateDatabase()
+    const original = legacy.records.devices[0]
+    const duplicate = { ...original, id: 'duplicate-device-v12', owner: '厦门蓝湾船舶服务', ownerId: 'dealer-t2-xm' }
+    legacy.records.devices.push(duplicate)
+    legacy.records.projects.push({ ...legacy.records.projects[0], id: 'duplicate-project-v12', code: 'PRJ-DUP-V12', deviceSN: original.code, owner: duplicate.owner, ownerId: duplicate.ownerId })
+
+    const migrated = migrateDatabase({ version: 12, records: legacy.records })
+    const migratedDuplicate = migrated.records.devices.find((item) => item.id === duplicate.id)!
+    expect(migratedDuplicate.code).toMatch(new RegExp(`^${original.code}-D\\d+$`))
+    expect(new Set(migrated.records.devices.map((item) => item.code)).size).toBe(migrated.records.devices.length)
+    expect(migrated.records.projects.find((item) => item.id === 'duplicate-project-v12')?.deviceSN).toBe(migratedDuplicate.code)
+  })
+
+  it('automatically migrates the current v8 browser database and preserves user records', () => {
+    localStorage.setItem(PREVIOUS_DATABASE_KEY, JSON.stringify({ version: 8, records: { projects: [{ id: 'legacy-project', code: 'OLD-001', name: '保留项目', ownerId: 'platform', status: 'normal', domain: 'cn', createdAt: '2026-01-01', updatedAt: '2026-01-01' }] } }))
     setActivePinia(createPinia())
     const store = useDatabaseStore()
-    expect(store.database.version).toBe(8)
-    expect(JSON.parse(localStorage.getItem(DATABASE_KEY) || '{}').version).toBe(8)
+    expect(store.database.version).toBe(15)
+    expect(JSON.parse(localStorage.getItem(DATABASE_KEY) || '{}').version).toBe(15)
     expect(store.records('projects')[0].code).toBe('OLD-001')
     expect(store.records('auth-accounts').some((item) => item.account === 'admin@shark.cn')).toBe(true)
     expect(store.records('notifications').length).toBeGreaterThan(0)
@@ -49,7 +95,7 @@ describe('database store', () => {
     current.records.projects.unshift({ ...current.records.projects[0], id: 'kept-project', code: 'KEEP-V8', name: '迁移保留项目' })
 
     const migrated = migrateDatabase({ version: 7, records: current.records })
-    expect(migrated.version).toBe(8)
+    expect(migrated.version).toBe(15)
     expect(migrated.records.projects.some((item) => item.id === 'kept-project')).toBe(true)
     expect(migrated.records.roles.find((item) => item.roleKey === 'tier1')?.permissions).toEqual(expect.arrayContaining(['warranty:view', 'warranty:create', 'warranty:edit']))
     expect(migrated.records.roles.find((item) => item.roleKey === 'tier2')?.permissions).toEqual(expect.arrayContaining(['warranty:view', 'warranty:create', 'warranty:edit']))
@@ -130,13 +176,101 @@ describe('database store', () => {
     expect(migratedAgain.records['service-responsibilities']).toEqual([])
   })
 
-  it('preserves saved built-in dealer role permissions after a V8 reload', () => {
+  it('backfills repair dealer ownership and mirrors historical expenses into platform bills', () => {
+    const store = useDatabaseStore()
+    expect(store.records('repairs').every((item) => item.dealerId && item.dealer)).toBe(true)
+    expect(store.records('payments').every((item) => item.sourceType && item.sourceLabel)).toBe(true)
+    for (const expense of store.records('expense-records')) {
+      expect(store.records('payments')).toContainEqual(expect.objectContaining({
+        expenseRecordId: expense.id,
+        subjectId: expense.subjectId,
+        sourceType: 'platform',
+        status: 'paid',
+      }))
+    }
+  })
+
+  it('keeps representative records at every important workflow node with valid relations', () => {
+    const store = useDatabaseStore()
+    const statuses = (moduleKey: string) => new Set(store.records(moduleKey).map((item) => item.status))
+    expect([...statuses('repairs')]).toEqual(expect.arrayContaining(['pending', 'processing', 'completed']))
+    expect([...statuses('messages')]).toEqual(expect.arrayContaining(['pending', 'forwarded', 'completed']))
+    expect([...statuses('complaints')]).toEqual(expect.arrayContaining(['pending', 'processing', 'completed']))
+    expect([...statuses('sn-replacement')]).toEqual(expect.arrayContaining(['pending', 'completed', 'failed']))
+    expect([...statuses('issuance')]).toEqual(expect.arrayContaining(['shipped', 'received', 'completed']))
+    expect([...statuses('installation-transfers')]).toEqual(expect.arrayContaining(['pending', 'approved', 'rejected']))
+
+    const purchaseStages = new Set(store.records('materials').filter((item) => item.category === '设备采购').map((item) => item.purchaseStage))
+    expect([...purchaseStages]).toEqual(expect.arrayContaining(['business_confirmation', 'finance_confirmation', 'warehouse_fulfillment', 'shipped', 'completed']))
+    const transferStages = new Set(store.records('service-transfer').map((item) => item.approvalStage))
+    expect([...transferStages]).toEqual(expect.arrayContaining(['target_confirmation', 'fee_approval', 'completed', 'rejected']))
+
+    for (const transfer of store.records('installation-transfers')) {
+      expect(store.records('projects').some((item) => item.id === transfer.projectId), transfer.code).toBe(true)
+      expect(store.records('devices').some((item) => item.code === transfer.deviceSN), transfer.code).toBe(true)
+    }
+    for (const instance of store.records('approval-instances')) {
+      expect(store.records(String(instance.sourceModule)).some((item) => item.id === instance.subjectId), instance.code).toBe(true)
+      expect(store.records('approval-steps').some((item) => item.instanceId === instance.id), instance.code).toBe(true)
+    }
+    expect([...statuses('approval-instances')]).toEqual(expect.arrayContaining(['pending', 'approved', 'rejected']))
+
+    const billedRepair = store.records('repairs').find((item) => item.billingPaymentId)
+    expect(billedRepair).toBeTruthy()
+    expect(store.records('payments').some((item) => item.id === billedRepair?.billingPaymentId && item.subjectId === billedRepair?.id)).toBe(true)
+    expect(store.records('billing-items').some((item) => item.paymentId === billedRepair?.billingPaymentId)).toBe(true)
+    const replacedIssuance = store.records('issuance').find((item) => item.status === 'completed')
+    expect(store.records('replacement-records').some((item) => item.issuanceId === replacedIssuance?.id && item.repairId)).toBe(true)
+  })
+
+  it('migrates approval configuration to one independent flow per business menu', () => {
+    const store = useDatabaseStore()
+    const flows = store.records('approval-flow').filter((item) => item.status === 'normal')
+    expect(flows.map((item) => item.menuKey).sort()).toEqual(['materials', 'service-transfer', 'warehouse'])
+    expect(new Set(flows.map((item) => item.menuKey)).size).toBe(3)
+    for (const flow of flows) {
+      expect(flow.menuLabel).toBeTruthy()
+      expect(Array.isArray(flow.members)).toBe(true)
+    }
+    const pendingInstance = store.records('approval-instances').find((item) => item.status === 'pending')!
+    expect(pendingInstance.menuKey).toBeTruthy()
+    expect(pendingInstance.flowId).toBeTruthy()
+  })
+
+  it('preserves saved built-in dealer role permissions after a V9 reload', () => {
     const store = useDatabaseStore()
     const role = store.records('roles').find((item) => item.roleKey === 'tier2')!
     store.update('roles', role.id, { permissions: ['dashboard:view', 'devices:view'] })
     const migrated = migrateDatabase(store.database)
     expect(migrated.records.roles.find((item) => item.id === role.id)?.permissions).toEqual(['dashboard:view', 'devices:view'])
     expect(migrated.records.roles.find((item) => item.roleKey === 'platform')?.permissions).toEqual(['*:*:*'])
+  })
+
+  it('backfills stable user, issuance and audit relations during the V8 to V9 migration', () => {
+    const store = useDatabaseStore()
+    const boundDevices = store.records('devices').filter((item) => item.bindingStatus === 'bound' && item.account !== '-')
+    expect(boundDevices.some((item) => item.userId)).toBe(true)
+    expect(boundDevices.filter((item) => item.userId).every((item) => store.records('users').some((user) => user.id === item.userId))).toBe(true)
+    expect(store.records('issuance').some((item) => item.sourceRequestId && item.deviceSN)).toBe(true)
+
+    const project = store.records('projects')[0]
+    store.audit('编辑项目', project.code, '林海', false, project)
+    const log = store.records('logs')[0]
+    expect(log.subjectId).toBe(project.id)
+    expect(log.subjectModule).toBe('projects')
+  })
+
+  it('repairs legacy account-linked devices even when their binding status is missing', () => {
+    const source = migrateDatabase()
+    const user = source.records.users.find((item) => source.records.devices.some((device) => device.account === item.account))!
+    const device = source.records.devices.find((item) => item.account === user.account)!
+    device.userId = ''
+    device.bindingStatus = 'normal'
+
+    const migrated = migrateDatabase(source)
+    const repaired = migrated.records.devices.find((item) => item.id === device.id)!
+    expect(repaired.userId).toBe(user.id)
+    expect(repaired.bindingStatus).toBe('bound')
   })
 
   it('persists interface preferences with the versioned key', () => {

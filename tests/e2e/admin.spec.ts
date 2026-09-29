@@ -25,30 +25,87 @@ async function selectFirstOption(page: Page, scope: ReturnType<Page['locator']>,
   await option.click()
 }
 
+async function selectOptionContaining(page: Page, scope: ReturnType<Page['locator']>, label: string, text: string) {
+  const field = scope.locator('.el-form-item', { hasText: label })
+  const combobox = field.getByRole('combobox')
+  await field.locator('.el-select').click()
+  const controls = await combobox.getAttribute('aria-controls')
+  expect(controls).toBeTruthy()
+  const option = page.locator(`#${controls}`).getByRole('option').filter({ hasText: text }).first()
+  await expect(option).toBeVisible()
+  await option.click()
+}
+
+async function clickRowAction(page: Page, row: ReturnType<Page['locator']>, label: string) {
+  const directAction = row.getByRole('button', { name: label, exact: true })
+  if (await directAction.count()) {
+    await directAction.click()
+    return
+  }
+  await row.getByRole('button', { name: /更多操作/ }).click()
+  await page.getByRole('menuitem', { name: label, exact: true }).click()
+}
+
 async function visibleMenuRoutes(page: Page) {
   return page.locator('.nav-item').evaluateAll((links) => links.map((link) => String((link as HTMLAnchorElement).hash).replace(/^#\//, '')))
 }
 
+test('platform launch screen settings persist, export JSON and reject dealer access', async ({ page }, testInfo) => {
+  await login(page)
+  await page.goto('/#/launch-settings')
+  await expect(page.getByRole('heading', { name: 'APP 启动页' })).toBeVisible()
+  await expect(page.locator('.launch-preview')).toBeVisible()
+
+  const revision = `v3.2-launch-${Date.now()}`
+  await page.getByLabel('配置版本号').fill(revision)
+  await page.getByLabel('中文副标题').fill('连接设备，从这里开始')
+  await page.getByRole('button', { name: '保存配置' }).click()
+  await expect(page.getByText('启动页配置已保存')).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel('配置版本号')).toHaveValue(revision)
+  await expect(page.locator('.preview-content')).toContainText('连接设备，从这里开始')
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: '导出配置 JSON' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe(`launch-screen-${revision}.json`)
+  await page.screenshot({ path: testInfo.outputPath('launch-settings.png'), fullPage: true })
+
+  await logout(page)
+  await login(page, 'tier1@dealer.cn', 'Dealer123!')
+  await page.goto('/#/launch-settings')
+  await expect(page).toHaveURL(/#\/403/)
+})
+
 test('platform, tier-1 and tier-2 accounts expose the demonstration menu and warranty matrix', async ({ page }) => {
   const platformMenus = [
-    'dashboard', 'users', 'dealers', 'projects', 'devices', 'warehouse', 'ota',
-    'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
-    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow',
-    'payments', 'payment-settings', 'banners', 'admins', 'roles', 'logs',
+    'dashboard', 'approval-center', 'approval-flow', 'users', 'dealers', 'sales-regions', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'product-categories', 'material-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota',
+    'repairs', 'messages', 'complaints', 'materials', 'issuance',
+    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'after-sales-types',
+    'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
   ]
   const tier1Menus = [
-    'dashboard', 'users', 'dealers', 'projects', 'devices', 'warehouse',
-    'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
-    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'payments',
+    'dashboard', 'approval-flow', 'users', 'dealers', 'projects', 'devices', 'product-catalog',
+    'repairs', 'messages', 'complaints', 'materials', 'issuance',
+    'sn-replacement', 'service-transfer', 'warranty', 'payments',
   ]
   const tier2Menus = [
-    'dashboard', 'projects', 'devices', 'warehouse', 'repairs', 'messages', 'complaints',
-    'materials', 'material-catalog', 'issuance', 'couriers', 'sn-replacement',
+    'dashboard', 'projects', 'devices', 'product-catalog', 'repairs', 'messages', 'complaints',
+    'materials', 'issuance', 'sn-replacement',
     'service-transfer', 'warranty', 'payments',
   ]
 
   await login(page)
   expect(await visibleMenuRoutes(page)).toEqual(platformMenus)
+  const sidebarIcons = await page.locator('.nav-item .app-icon.line').evaluateAll(async (icons) => Promise.all(icons.map(async (icon) => {
+    const maskImage = getComputedStyle(icon).maskImage
+    const source = maskImage.match(/url\(["']?(.*?)["']?\)/)?.[1] || ''
+    const response = source ? await fetch(new URL(source, document.baseURI)) : null
+    const bounds = icon.getBoundingClientRect()
+    return { label: icon.parentElement?.textContent?.trim(), ok: response?.ok === true, width: bounds.width, height: bounds.height }
+  })))
+  expect(sidebarIcons).toHaveLength(platformMenus.length)
+  expect(sidebarIcons.filter((icon) => !icon.ok || icon.width === 0 || icon.height === 0)).toEqual([])
   await page.goto('/#/warranty')
   await expect(page.getByRole('button', { name: '新增质保规则' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0)
@@ -73,6 +130,89 @@ test('platform, tier-1 and tier-2 accounts expose the demonstration menu and war
   await expect(tier2Rows).toHaveCount(1)
   await expect(tier2Rows.first()).toContainText('厦门蓝湾船舶服务')
   await expect(tier2Rows.first().getByRole('button', { name: '编辑', exact: true })).toBeVisible()
+})
+
+test('headquarters initiates a fee-bearing after-sales transfer through target confirmation and fee approval', async ({ page }) => {
+  test.setTimeout(60_000)
+  await login(page)
+  const context = await page.evaluate(() => {
+    const database = JSON.parse(localStorage.getItem('shark-sister-admin.db.v15') || '{}')
+    const records = database.records || {}
+    const activeSNs = new Set((records['service-transfer'] || []).filter((item: Record<string, unknown>) => item.status === 'pending').map((item: Record<string, unknown>) => item.deviceSN))
+    const device = (records.devices || []).find((item: Record<string, unknown>) => item.ownerId !== 'platform' && item.inventoryStatus !== 'in_stock' && !activeSNs.has(item.code))
+    const source = (records.dealers || []).find((item: Record<string, unknown>) => String(item.organizationId || item.ownerId) === String(device?.ownerId))
+    const target = (records.dealers || []).find((item: Record<string, unknown>) => {
+      const targetId = String(item.organizationId || item.ownerId)
+      return item.status === 'normal' && item.domain === source?.domain && targetId !== String(source?.organizationId || source?.ownerId)
+        && (records['auth-accounts'] || []).some((account: Record<string, unknown>) => account.status === 'normal' && account.ownerId === targetId)
+    })
+    const targetId = String(target?.organizationId || target?.ownerId)
+    const account = (records['auth-accounts'] || []).find((item: Record<string, unknown>) => item.status === 'normal' && item.ownerId === targetId)
+    return { sn: String(device?.code || ''), targetName: String(target?.name || ''), account: String(account?.account || ''), password: String(account?.password || '') }
+  })
+  expect(context.sn).toBeTruthy()
+  expect(context.targetName).toBeTruthy()
+
+  await page.goto('/#/service-transfer')
+  await page.getByRole('button', { name: '发起售后转移' }).click()
+  let dialog = page.locator('.entity-dialog')
+  await selectOptionContaining(page, dialog, '设备 SN', context.sn)
+  const targetField = dialog.locator('.el-form-item', { hasText: '目标经销商' })
+  await targetField.locator('.el-select').click()
+  const targetControls = await targetField.getByRole('combobox').getAttribute('aria-controls')
+  await page.locator(`#${targetControls}`).getByRole('option', { name: new RegExp(context.targetName) }).click()
+  await dialog.locator('.el-form-item', { hasText: '是否涉及费用' }).locator('.el-switch').click()
+  await dialog.locator('.el-form-item', { hasText: '预计费用' }).getByRole('spinbutton').fill('3600')
+  await selectFirstOption(page, dialog, '费用承担方')
+  await dialog.locator('.el-form-item', { hasText: '费用说明' }).locator('textarea').fill('跨区域交接和运输费用')
+  await dialog.locator('.el-form-item', { hasText: '转移原因' }).locator('textarea').fill('总部调整售后责任归属')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  let row = page.locator('.business-table .el-table__body tr', { hasText: context.sn }).last()
+  await expect(row).toContainText('待总部审批')
+  await expect(row).toContainText('3,600')
+
+  await logout(page)
+  await login(page, context.account, context.password)
+  await page.goto('/#/service-transfer?tab=target')
+  row = page.locator('.business-table .el-table__body tr', { hasText: context.sn }).last()
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: '确认售后转移' }).click()
+  let risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '确认结果' }).locator('.el-select').click()
+  await page.getByRole('option', { name: '确认接收', exact: true }).click()
+  await risk.getByLabel('操作原因').fill('目标经销商确认接收设备售后责任')
+  await risk.getByRole('button', { name: '确认确认售后转移' }).click()
+
+  await logout(page)
+  await login(page)
+  await page.goto('/#/service-transfer?tab=fee')
+  row = page.locator('.business-table .el-table__body tr', { hasText: context.sn }).last()
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: '通过费用审批' }).click()
+  risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '实际费用' }).getByRole('spinbutton').fill('3500')
+  await selectFirstOption(page, risk, '付款方式')
+  await risk.getByPlaceholder('请输入付款凭证/流水号').fill('E2E-TRF-OFFLINE-001')
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').fill('2026-08-21')
+  await risk.locator('.el-form-item', { hasText: '付款日期' }).locator('input').press('Enter')
+  await risk.getByLabel('操作原因').fill('线下费用凭证核对通过')
+  await risk.getByRole('button', { name: '确认通过费用审批' }).click()
+
+  await page.goto('/#/service-transfer?tab=completed')
+  row = page.locator('.business-table .el-table__body tr', { hasText: context.sn }).last()
+  await expect(row).toContainText('已完成')
+  await expect(row).toContainText('已登记')
+  await row.getByRole('button', { name: '查看详情', exact: true }).click()
+  dialog = page.locator('.detail-dialog')
+  await dialog.getByRole('tab', { name: '费用记录' }).click()
+  await expect(dialog).toContainText('E2E-TRF-OFFLINE-001')
+
+  await dialog.getByRole('button', { name: '关闭', exact: true }).click()
+  await page.goto('/#/payments?tab=platform')
+  const billRow = page.locator('.business-table .el-table__body tr', { hasText: 'E2E-TRF-OFFLINE-001' })
+  await expect(billRow).toBeVisible()
+  await expect(billRow).toContainText('平台费用登记')
+  await expect(billRow).toContainText('3,500')
 })
 
 test('platform project edit and delete stay synchronized without an undefined create entry', async ({ page }) => {
@@ -102,6 +242,140 @@ test('tier-2 account must change password and cannot access admins', async ({ pa
   await expect(page.getByText('没有访问权限')).toBeVisible()
 })
 
+test('dealer creates a device purchase request with an automatically calculated budget', async ({ page }) => {
+  await login(page, 'tier2@dealer.cn', 'Dealer123!')
+  if (page.url().includes('/first-password')) {
+    await page.getByRole('textbox', { name: '新密码', exact: true }).fill('DealerPurchase123!')
+    await page.getByRole('textbox', { name: '确认新密码', exact: true }).fill('DealerPurchase123!')
+    await page.getByRole('button', { name: '保存并进入后台' }).click()
+  }
+
+  await page.goto('/#/materials?tab=productPurchase')
+  await page.getByRole('button', { name: '发起整机采购' }).click()
+  const dialog = page.locator('.entity-dialog')
+  await expect(dialog).toBeVisible()
+  const purchaseLine = dialog.locator('.line-item-row').first()
+  await purchaseLine.locator('.el-select').click()
+  await page.getByRole('option', { name: /顶流机 TF-01/ }).click()
+  await purchaseLine.getByRole('spinbutton', { name: '数量' }).fill('2')
+  await purchaseLine.getByRole('spinbutton', { name: '参考单价' }).fill('68551')
+  await purchaseLine.getByRole('spinbutton', { name: '参考单价' }).blur()
+  await expect(dialog.locator('.el-form-item', { hasText: '预算总费用' }).locator('input')).toHaveValue('137102')
+  await dialog.locator('.el-form-item', { hasText: '采购用途与说明' }).locator('textarea').fill('新增两台船用制冰设备')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+
+  const row = page.locator('.business-table .el-table__body tr', { hasText: '137,102' }).first()
+  await expect(row).toBeVisible()
+  await expect(row).toContainText('顶流机 TF-01')
+  await expect(row).toContainText('待确认')
+  await row.getByRole('button', { name: '查看详情' }).click()
+  const detail = page.locator('.detail-dialog')
+  await expect(detail.getByRole('tab')).toHaveText(['基本信息', '采购明细', '改单记录', '完整业务链', '费用与合同', '仓库发货'])
+})
+
+test('device purchase completes business, finance and warehouse fulfillment in the UI', async ({ page }) => {
+  test.setTimeout(120_000)
+  await login(page, 'tier2@dealer.cn', 'Dealer123!')
+  if (page.url().includes('/first-password')) {
+    await page.getByRole('textbox', { name: '新密码', exact: true }).fill('DealerFlow123!')
+    await page.getByRole('textbox', { name: '确认新密码', exact: true }).fill('DealerFlow123!')
+    await page.getByRole('button', { name: '保存并进入后台' }).click()
+  }
+
+  await page.goto('/#/materials?tab=productPurchase')
+  await page.getByRole('button', { name: '发起整机采购' }).click()
+  const dialog = page.locator('.entity-dialog')
+  const purchaseLine = dialog.locator('.line-item-row').first()
+  await purchaseLine.locator('.el-select').click()
+  await page.getByRole('option', { name: /顶流机 TF-01/ }).click()
+  await purchaseLine.getByRole('spinbutton', { name: '数量' }).fill('1')
+  await purchaseLine.getByRole('spinbutton', { name: '参考单价' }).fill('68000')
+  await dialog.locator('.el-form-item', { hasText: '采购用途与说明' }).locator('textarea').fill('会议修改点全链路采购验收')
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  let row = page.locator('.business-table .el-table__body tr', { hasText: '68,000' }).first()
+  const purchaseCode = (await row.locator('.mono-cell').first().textContent())!.trim()
+
+  await logout(page)
+  await login(page, 'tier1@dealer.cn', 'Dealer123!')
+  await page.goto('/#/materials')
+  row = page.locator('.business-table .el-table__body tr', { hasText: purchaseCode }).first()
+  await row.getByRole('button', { name: '审批通过' }).click()
+  let risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '确认意见' }).locator('textarea').fill('一级经销商确认采购需求')
+  await risk.getByRole('button', { name: '确认业务确认通过' }).click()
+
+  await logout(page)
+  await login(page)
+  await page.goto('/#/approval-center')
+  row = page.locator('.business-table .el-table__body tr', { hasText: purchaseCode }).first()
+  await expect(row).toContainText('待处理')
+  await row.getByRole('button', { name: '审批通过' }).click()
+  risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '审批意见' }).locator('textarea').fill('总部确认采购业务')
+  await risk.getByRole('button', { name: '确认审批通过' }).click()
+
+  await page.goto('/#/materials?tab=productPurchase')
+  row = page.locator('.business-table .el-table__body tr', { hasText: purchaseCode }).first()
+  await expect(row).toContainText('待财务确认')
+  await row.getByRole('button', { name: '财务确认' }).click()
+  risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '合同状态' }).locator('.el-select').click()
+  await page.getByRole('option', { name: '已签订', exact: true }).click()
+  await risk.getByPlaceholder('请输入合同编号').fill('CONTRACT-E2E-PURCHASE-001')
+  await risk.locator('.el-form-item', { hasText: '确认金额' }).getByRole('spinbutton').fill('68000')
+  await risk.locator('.el-form-item', { hasText: '费用记录方式' }).locator('.el-select').click()
+  await page.getByRole('option', { name: '对公转账', exact: true }).click()
+  await risk.getByPlaceholder('请输入付款凭证/流水号').fill('BANK-E2E-PURCHASE-001')
+  await risk.locator('.el-form-item', { hasText: '确认日期' }).locator('input').fill('2026-09-02')
+  await risk.locator('.el-form-item', { hasText: '确认日期' }).locator('input').press('Enter')
+  await risk.getByRole('button', { name: '确认财务确认' }).click()
+  await expect(row).toContainText('待仓库发货')
+
+  const stock = await page.evaluate(() => {
+    const database = JSON.parse(localStorage.getItem('shark-sister-admin.db.v15') || '{}')
+    const device = (database.records?.devices || []).find((item: Record<string, unknown>) => item.inventoryStatus === 'in_stock' && item.deviceModel === 'TF-01')
+    const warehouse = (database.records?.warehouses || []).find((item: Record<string, unknown>) => item.id === device?.warehouseId)
+    return { deviceSN: String(device?.code || ''), warehouseName: String(warehouse?.name || '') }
+  })
+  expect(stock.deviceSN).toBeTruthy()
+  await row.getByRole('button', { name: '仓库发货' }).click()
+  risk = page.locator('.risk-dialog')
+  const deviceField = risk.locator('.el-form-item', { hasText: '选择在库设备' })
+  await deviceField.locator('.el-select').click()
+  const deviceControls = await deviceField.getByRole('combobox').getAttribute('aria-controls')
+  await page.locator(`#${deviceControls}`).getByRole('option', { name: new RegExp(stock.deviceSN) }).click()
+  await page.keyboard.press('Escape')
+  const warehouseField = risk.locator('.el-form-item', { hasText: '发货仓库' })
+  await warehouseField.locator('.el-select').click()
+  const warehouseControls = await warehouseField.getByRole('combobox').getAttribute('aria-controls')
+  await page.locator(`#${warehouseControls}`).getByRole('option', { name: new RegExp(stock.warehouseName) }).click()
+  await risk.locator('.el-form-item', { hasText: '交付方式' }).locator('.el-select').click()
+  await page.getByRole('option', { name: '物流配送', exact: true }).click()
+  await risk.getByPlaceholder('请输入物流/交付单号').fill('DELIVERY-E2E-PURCHASE-001')
+  await risk.locator('.el-form-item', { hasText: '发货日期' }).locator('input').fill('2026-09-02')
+  await risk.locator('.el-form-item', { hasText: '发货日期' }).locator('input').press('Enter')
+  await risk.locator('.el-form-item', { hasText: '发货说明' }).locator('textarea').fill('总部仓库完成采购履约')
+  await risk.getByRole('button', { name: '确认仓库发货' }).click()
+  await expect(row).toContainText('已发货')
+
+  await logout(page)
+  await login(page, 'tier2@dealer.cn', 'DealerFlow123!')
+  await page.goto('/#/materials?tab=productPurchase')
+  row = page.locator('.business-table .el-table__body tr', { hasText: purchaseCode }).first()
+  await row.getByRole('button', { name: '确认收货' }).click()
+  risk = page.locator('.risk-dialog')
+  await risk.locator('.el-form-item', { hasText: '收货说明' }).locator('textarea').fill('设备到货，数量和外观验收无误')
+  await risk.getByRole('button', { name: '确认确认收货' }).click()
+  await expect(row).toContainText('已完成')
+  await row.getByRole('button', { name: '查看详情' }).click()
+  const completedDetail = page.locator('.detail-dialog')
+  await completedDetail.getByRole('tab', { name: '完整业务链' }).click()
+  await expect(completedDetail).toContainText('申请已提交')
+  await expect(completedDetail).toContainText('财务与合同确认')
+  await expect(completedDetail).toContainText('仓库配货并发出')
+  await expect(completedDetail).toContainText('收货确认并完成')
+})
+
 test('core pages have no console errors or horizontal overflow', async ({ page }) => {
   const errors: string[] = []
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
@@ -114,16 +388,84 @@ test('core pages have no console errors or horizontal overflow', async ({ page }
   expect(errors).toEqual([])
 })
 
-test('all 24 V3.2 menus, tabs and available details are reachable', async ({ page }) => {
+test('user related navigation opens filtered devices and restores the source detail', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/users?tab=all&pageNum=1')
+  const row = page.locator('.business-table .el-table__body tr').first()
+  await row.getByRole('button', { name: '查看详情' }).click()
+  const detail = page.locator('.detail-dialog')
+  await expect(detail).toBeVisible()
+  await detail.getByRole('button', { name: '查看设备', exact: true }).click()
+
+  await expect(page).toHaveURL(/#\/devices\?.*rel_userId=/)
+  await expect(page.locator('.relation-context-bar')).toContainText('来自用户管理')
+  await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+  await page.locator('.relation-context-bar').getByRole('button', { name: '返回来源' }).click()
+
+  await expect(page).toHaveURL(/#\/users\?/)
+  await expect(page.locator('.detail-dialog')).toBeVisible()
+})
+
+test('warehouse creates a pending outbound order from an uploaded SN spreadsheet', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/warehouse?tab=stock')
+  const warehouseSn = (await page.locator('.business-table .el-table__body tr').first().locator('.mono-cell').first().textContent())!.trim()
+
+  await page.goto('/#/warehouse?tab=outbound')
+  await page.getByRole('button', { name: '表格出库' }).click()
+  const dialog = page.getByRole('dialog', { name: '表格批量出库' })
+  await expect(dialog).toBeVisible()
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: 'warehouse-outbound.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(`SN\n${warehouseSn}`, 'utf-8'),
+  })
+  await expect(dialog.getByText('1 行校验通过')).toBeVisible()
+  await selectFirstOption(page, dialog, '接收经销商')
+  await dialog.getByPlaceholder('请输入本次批量出库说明').fill('Playwright 表格出库')
+  await dialog.getByRole('button', { name: '创建出库单（1 台）' }).click()
+
+  await expect(page.getByText('已创建包含 1 台设备的待确认出库单')).toBeVisible()
+  const row = page.locator('.business-table .el-table__body tr', { hasText: warehouseSn }).first()
+  await expect(row).toBeVisible()
+  await expect(row).toContainText('待处理')
+})
+
+test('product category tree filters descendants and creates a child category with a full path', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/product-catalog')
+  const categoryPanel = page.getByLabel('产品分类树')
+  await expect(categoryPanel).toBeVisible()
+  await expect(categoryPanel.getByText('所有分类', { exact: true })).toBeVisible()
+  await categoryPanel.getByText('整机设备', { exact: true }).click()
+  await expect(page).toHaveURL(/category=/)
+  await expect(page.locator('.table-toolbar')).toContainText('整机设备')
+  await expect(page.locator('.business-table .el-table__body tr').first()).toContainText('整机设备 ->')
+
+  await page.goto('/#/product-categories')
+  await page.getByRole('button', { name: '新增产品分类', exact: true }).first().click()
+  const dialog = page.getByRole('dialog', { name: '新增产品分类' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel('分类编号').fill('PCG-E2E-CHILD')
+  await dialog.getByLabel('分类名称').fill('演示子分类')
+  await selectOptionContaining(page, dialog, '上级分类', '售后物料')
+  await expect(dialog.getByLabel('完整分类路径')).toHaveValue(/售后物料 -> 演示子分类/)
+  await dialog.getByRole('button', { name: '保存', exact: true }).click()
+  await expect(page.getByText('新增成功')).toBeVisible()
+  await categoryPanel.getByText('售后物料', { exact: true }).click()
+  await expect(page.locator('.business-table')).toContainText('售后物料 -> 演示子分类')
+})
+
+test('all 36 demo menus, tabs and available details are reachable', async ({ page }) => {
   test.setTimeout(120_000)
   const menus = [
-    ['dashboard', '首页'], ['users', '用户管理'], ['dealers', '经销商管理'], ['projects', '项目管理'],
-    ['devices', '设备管理'], ['warehouse', '仓库设备'], ['ota', 'OTA 管理'], ['repairs', '故障报修'],
-    ['messages', '客服留言'], ['complaints', '投诉管理'], ['materials', '物料申请'], ['material-catalog', '物料与库存'],
-    ['issuance', '物料发放记录'], ['couriers', '物流配置'], ['sn-replacement', '换 SN 管理'],
-    ['service-transfer', '售后转移'], ['warranty', '质保规则'], ['approval-flow', '审批流程'],
-    ['payments', '支付订单'], ['payment-settings', '支付配置'], ['banners', 'Banner 管理'],
-    ['admins', '管理员账号'], ['roles', '角色权限'], ['logs', '操作日志'],
+    ['dashboard', '首页'], ['users', '用户管理'], ['dealers', '经销商管理'], ['sales-regions', '销售区域配置'], ['projects', '项目管理'], ['installation-transfers', '安装跨区审核'],
+    ['devices', '设备管理'], ['product-catalog', '产品管理'], ['product-categories', '产品分类配置'], ['material-catalog', '售后物料管理'], ['warehouses', '仓库管理'], ['warehouse-locations', '库位管理'], ['warehouse', '仓库设备'], ['ota', 'OTA 管理'], ['repairs', '故障报修'],
+    ['messages', '客服留言'], ['complaints', '投诉管理'], ['materials', '采购与物料申请'],
+    ['issuance', '收货物料申请'], ['approval-center', '审批中心'], ['couriers', '物流配置'], ['sn-replacement', '换 SN 管理'],
+    ['service-transfer', '售后转移'], ['warranty', '质保规则'], ['approval-flow', '审批流程'], ['after-sales-types', '售后类型配置'],
+    ['payments', '支付订单'], ['payment-settings', '支付配置'], ['banners', 'Banner 管理'], ['faq-documents', '常见问题 PDF'], ['support-settings', '客服信息'],
+    ['launch-settings', 'APP 启动页'], ['app-versions', '客户端版本'], ['admins', '管理员账号'], ['roles', '角色权限'], ['logs', '操作日志'],
   ] as const
   const errors: string[] = []
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
@@ -188,13 +530,13 @@ test('1024px layout collapses the sidebar without page overflow', async ({ page 
   })).toBe(true)
 })
 
-test('all 24 business routes stay nonblank and overflow-free at both acceptance viewports', async ({ page }) => {
+test('all 36 business routes stay nonblank and overflow-free at both acceptance viewports', async ({ page }) => {
   test.setTimeout(90_000)
   const routes = [
-    'dashboard', 'users', 'dealers', 'projects', 'devices', 'warehouse', 'ota', 'repairs',
-    'messages', 'complaints', 'materials', 'material-catalog', 'issuance', 'couriers',
-    'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'payments',
-    'payment-settings', 'banners', 'admins', 'roles', 'logs',
+    'dashboard', 'users', 'dealers', 'sales-regions', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'product-categories', 'material-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota', 'repairs',
+    'messages', 'complaints', 'materials', 'issuance', 'approval-center', 'couriers',
+    'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'after-sales-types', 'payments',
+    'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
   ]
   await login(page)
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }]) {
@@ -235,9 +577,9 @@ test('sidebar groups expand, collapse and remember their state', async ({ page }
 
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(operations.locator('.nav-group-items')).toHaveCSS('opacity', '1')
-  await expect(page.locator('.nav-group-trigger[aria-expanded="true"]')).toHaveCount(6)
+  await expect(page.locator('.nav-group-trigger[aria-expanded="true"]')).toHaveCount(7)
   await expect(page.locator('.nav-subgroup-title')).toContainText(['工单服务', '物料履约', '售后配置', '交易管理', '内容运营'])
-  await expect(page.locator('.nav-badge')).toHaveCount(0)
+  await expect(page.locator('.nav-badge')).toHaveText(/^[1-9]\d*$/)
 
   await trigger.click()
   await expect(trigger).toHaveAttribute('aria-expanded', 'false')
@@ -246,6 +588,16 @@ test('sidebar groups expand, collapse and remember their state', async ({ page }
   await page.goto('/#/users')
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
   await expect(operations.getByRole('link', { name: '用户管理' })).toBeVisible()
+})
+
+test('user details keep server-saved waypoints out of the admin interface', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/users')
+  await page.getByRole('button', { name: '查看详情' }).first().click()
+  const dialog = page.getByRole('dialog', { name: '用户管理详情' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('tab')).toHaveText(['基本信息', '绑定设备'])
+  await expect(dialog.getByRole('tab', { name: '航点数据' })).toHaveCount(0)
 })
 
 test('module filters keep labels above controls and navigation spacing compact', async ({ page }) => {
@@ -278,7 +630,23 @@ test('module filters keep labels above controls and navigation spacing compact',
   expect(focusLayers.inputOutline).toBe('none')
   expect(focusLayers.wrapperShadow).not.toContain('3px')
   const gap = await page.locator('.nav-item').first().evaluate((element) => getComputedStyle(element).columnGap)
-  expect(gap).toBe('8px')
+  expect(gap).toBe('6px')
+
+  const repairDealer = await page.evaluate(() => {
+    const database = JSON.parse(localStorage.getItem('shark-sister-admin.db.v15') || '{}')
+    const repair = (database.records?.repairs || []).find((item: Record<string, unknown>) => item.dealerId && item.dealer)
+    return { id: String(repair?.dealerId || ''), name: String(repair?.dealer || '') }
+  })
+  await page.goto('/#/repairs')
+  const dealerFilter = page.locator('.filter-field', { hasText: '代理归属' })
+  await expect(dealerFilter).toBeVisible()
+  await dealerFilter.locator('.el-select').click()
+  const dealerControls = await dealerFilter.getByRole('combobox').getAttribute('aria-controls')
+  await page.locator(`#${dealerControls}`).getByRole('option', { name: new RegExp(repairDealer.name) }).click()
+  await page.getByRole('button', { name: '查询', exact: true }).click()
+  const repairRows = page.locator('.business-table .el-table__body tr')
+  await expect(repairRows.first()).toContainText(repairDealer.name)
+  expect(await repairRows.count()).toBeGreaterThan(0)
 })
 
 test('single-device inbound creates one visible stock record and keeps one input border', async ({ page }) => {
@@ -289,28 +657,28 @@ test('single-device inbound creates one visible stock record and keeps one input
   const dialog = page.locator('.entity-dialog')
   await expect(dialog).toBeVisible()
   const regionField = dialog.locator('.el-form-item', { hasText: '销售地区' })
-  const regionInput = regionField.locator('input')
-  await regionInput.focus()
-  const borderLayers = await regionField.locator('.el-input').evaluate((element) => {
-    const root = getComputedStyle(element)
+  await regionField.getByRole('combobox').focus()
+  const borderLayers = await regionField.locator('.el-select__wrapper').evaluate((element) => {
+    const wrapper = getComputedStyle(element)
     const input = getComputedStyle(element.querySelector('input')!)
-    const wrapper = getComputedStyle(element.querySelector<HTMLElement>('.el-input__wrapper')!)
-    return { outerBorder: root.borderTopWidth, inputOutline: input.outlineStyle, wrapperShadow: wrapper.boxShadow }
+    return { outerBorder: wrapper.borderTopWidth, inputOutline: input.outlineStyle, wrapperShadow: wrapper.boxShadow }
   })
   expect(borderLayers.outerBorder).toBe('0px')
   expect(borderLayers.inputOutline).toBe('none')
   expect(borderLayers.wrapperShadow).not.toBe('none')
 
   const sn = 'WH-E2E-20260812001'
+  await selectOptionContaining(page, dialog, '设备类型', '制冷设备')
+  await selectOptionContaining(page, dialog, '设备型号', 'CI-02')
   await dialog.getByPlaceholder('请输入设备 SN').fill(sn)
-  await dialog.locator('.el-form-item', { hasText: '设备型号' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '制冰机 CI-02', exact: true }).click()
-  await regionInput.fill('中国 · 广东')
+  await selectOptionContaining(page, dialog, '销售地区', '中国 · 广东 · 深圳')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
 
   const row = page.locator('.business-table .el-table__body tr', { hasText: sn }).first()
   await expect(row).toBeVisible()
-  await expect(row).toContainText('制冰机 CI-02')
+  await expect(row).toContainText('制冷设备')
+  await expect(row).toContainText('CI-02')
+  await expect(row).toContainText('220V · 60kg/日')
   await expect(row).toContainText('正常')
 })
 
@@ -324,7 +692,8 @@ test('platform can create data from every remaining V3.2 maintenance form', asyn
   await dialog.getByPlaceholder('请输入登录账号').fill('e2edealer@shark.cn')
   await dialog.getByPlaceholder('请输入初始密码').fill('Dealer123!')
   await dialog.getByPlaceholder('请输入经销商名称').fill('端到端菜单经销商')
-  await dialog.getByPlaceholder('请输入负责地区').fill('中国 · 浙江')
+  await selectOptionContaining(page, dialog, '负责销售区域（可多选到市）', '中国 · 广东 · 深圳')
+  await page.keyboard.press('Escape')
   await dialog.locator('.el-form-item', { hasText: '经销商层级' }).locator('.el-select').click()
   await page.getByRole('option', { name: '一级', exact: true }).click()
   await dialog.getByPlaceholder('请输入联系电话').fill('13800138009')
@@ -335,13 +704,19 @@ test('platform can create data from every remaining V3.2 maintenance form', asyn
   await expect(page.locator('.business-table .el-table__body tr', { hasText: '端到端菜单经销商' })).toBeVisible()
 
   await page.goto('/#/devices')
-  await page.getByRole('button', { name: '录入设备' }).click()
+  await expect(page.getByRole('button', { name: '录入设备' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: '批量导入' })).toHaveCount(0)
+
+  await page.goto('/#/warehouse?tab=stock')
+  await page.getByRole('button', { name: '设备入库' }).click()
   dialog = page.locator('.entity-dialog')
+  await selectOptionContaining(page, dialog, '设备类型', '制冷设备')
+  await selectOptionContaining(page, dialog, '设备型号', 'CI-02')
   await dialog.getByPlaceholder('请输入设备 SN').fill('E2E-MENU-DEVICE-20260812')
-  await dialog.locator('.el-form-item', { hasText: '设备型号' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '制冰机 CI-02', exact: true }).click()
-  await dialog.getByPlaceholder('请输入销售地区').fill('中国 · 广东')
+  await selectOptionContaining(page, dialog, '销售地区', '中国 · 广东 · 深圳')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
+
+  await page.goto('/#/devices')
   const deviceRow = page.locator('.business-table .el-table__body tr', { hasText: 'E2E-MENU-DEVICE-20260812' })
   await expect(deviceRow).toBeVisible()
   await expect(deviceRow).toContainText('未激活')
@@ -351,8 +726,8 @@ test('platform can create data from every remaining V3.2 maintenance form', asyn
   await page.getByRole('button', { name: '新增固件版本' }).click()
   dialog = page.locator('.entity-dialog')
   await dialog.getByPlaceholder('请输入版本号').fill('8.7.6')
-  await dialog.locator('.el-form-item', { hasText: '适用设备类型' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '制冰机 CI-02', exact: true }).click()
+  await dialog.locator('.el-form-item', { hasText: '适用产品型号' }).locator('.el-select').click()
+  await page.getByRole('option', { name: /^制冰机 CI-02/ }).click()
   await dialog.locator('.el-form-item', { hasText: '版本说明' }).locator('textarea').fill('端到端全菜单固件')
   await dialog.locator('.el-form-item', { hasText: '固件文件' }).locator('input[type="file"]').setInputFiles({ name: 'e2e-menu.bin', mimeType: 'application/octet-stream', buffer: Buffer.from('demo firmware') })
   await dialog.locator('.el-form-item', { hasText: '发布状态' }).locator('.el-select').click()
@@ -361,17 +736,19 @@ test('platform can create data from every remaining V3.2 maintenance form', asyn
   await expect(page.locator('.business-table .el-table__body tr', { hasText: '8.7.6' })).toContainText('端到端全菜单固件')
 
   await page.goto('/#/material-catalog')
-  await page.getByRole('button', { name: '新增物料' }).click()
+  await page.getByRole('button', { name: '新增售后物料' }).click()
   dialog = page.locator('.entity-dialog')
   await dialog.getByPlaceholder('请输入物料名称').fill('端到端菜单密封组件')
+  await dialog.locator('.el-form-item', { hasText: '产品分类' }).locator('.el-select').click()
+  await page.getByRole('option', { name: /售后物料.*耗材/ }).click()
   await dialog.locator('.el-form-item', { hasText: '适用设备' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '制冰机 CI-02', exact: true }).click()
+  await page.getByRole('option', { name: /^制冰机 CI-02/ }).click()
   await dialog.locator('.el-form-item', { hasText: '采购价' }).locator('input').fill('168')
-  await dialog.locator('.el-form-item', { hasText: '库存数量' }).locator('input').fill('25')
+  await expect(dialog.getByText('库存数量', { exact: true })).toHaveCount(0)
   await dialog.locator('.el-form-item', { hasText: '启用状态' }).locator('.el-select').click()
   await page.getByRole('option', { name: '正常', exact: true }).click()
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
-  await expect(page.locator('.business-table .el-table__body tr', { hasText: '端到端菜单密封组件' })).toContainText('25')
+  await expect(page.locator('.business-table .el-table__body tr', { hasText: '端到端菜单密封组件' })).toContainText('¥168')
 
   await page.goto('/#/couriers')
   await page.getByRole('button', { name: '新增快递公司' }).click()
@@ -401,7 +778,7 @@ test('dealer-created records continue through platform approval and target-deale
   await page.getByRole('button', { name: '新增质保规则' }).click()
   let dialog = page.locator('.entity-dialog')
   await dialog.locator('.el-form-item', { hasText: '产品类型' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '电池组 BP-03', exact: true }).click()
+  await page.getByRole('option', { name: /^电池组 BP-03/ }).click()
   await selectFirstOption(page, dialog, '设置经销商')
   await dialog.locator('.el-form-item', { hasText: '免人工费时间' }).locator('input').fill('18')
   await dialog.locator('.el-form-item', { hasText: '物料质保时间' }).locator('input').fill('24')
@@ -411,47 +788,37 @@ test('dealer-created records continue through platform approval and target-deale
   await expect(page.locator('.business-table .el-table__body tr', { hasText: '电池组 BP-03' })).toContainText('24')
 
   await page.goto('/#/materials')
-  await page.getByRole('button', { name: '发起物料申请' }).click()
+  await page.getByRole('button', { name: '发起售后物料申请' }).click()
   dialog = page.locator('.entity-dialog')
-  await selectFirstOption(page, dialog, '物料名称')
+  await selectFirstOption(page, dialog, '售后物料')
   await dialog.locator('.el-form-item', { hasText: '申请数量' }).locator('input').fill('1')
-  await selectFirstOption(page, dialog, '设备 SN')
-  await dialog.locator('.el-form-item', { hasText: '申请类型' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '普通申请', exact: true }).click()
+  await selectFirstOption(page, dialog, '关联设备 SN')
   await dialog.locator('.el-form-item', { hasText: '申请说明' }).locator('textarea').fill('端到端跨角色物料申请')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   const materialRow = page.locator('.business-table .el-table__body tr', { hasText: replacementSource }).first()
   await expect(materialRow).toBeVisible()
   const materialCode = (await materialRow.locator('.mono-cell').first().textContent())!.trim()
 
-  await page.goto('/#/warehouse?tab=transfer')
-  await page.getByRole('button', { name: '发起调货申请' }).click()
-  dialog = page.locator('.entity-dialog')
-  const transferSelect = dialog.locator('.el-form-item', { hasText: '选择可调货设备' }).locator('.el-select')
-  await transferSelect.click()
-  const transferControls = await transferSelect.getByRole('combobox').getAttribute('aria-controls')
-  const transferOption = page.locator(`#${transferControls}`).getByRole('option').filter({ hasNotText: replacementSource }).filter({ hasNotText: transferSource }).first()
-  await expect(transferOption).toBeVisible()
-  const selectedTransferText = await transferOption.innerText()
-  const selectedTransferSN = selectedTransferText.split(' · ')[0].trim()
-  await transferOption.click()
-  await page.keyboard.press('Escape')
-  await expect(page.locator(`#${transferControls}`)).not.toBeVisible()
-  await selectFirstOption(page, dialog, '目标经销商')
-  await dialog.locator('.el-form-item', { hasText: '调货原因' }).locator('textarea').fill('端到端跨角色调货')
-  await dialog.getByRole('button', { name: '保存', exact: true }).click()
-  const transferRow = page.locator('.business-table .el-table__body tr').first()
-  await expect(transferRow).toBeVisible()
-  const warehouseCode = (await transferRow.locator('.mono-cell').first().textContent())!.trim()
-
   await page.goto('/#/sn-replacement')
   await page.getByRole('button', { name: '发起换 SN' }).click()
   dialog = page.locator('.entity-dialog')
-  await dialog.getByPlaceholder('请输入原 SN').fill(replacementSource)
-  await dialog.getByPlaceholder('请输入新 SN').fill('E2E-DEALER-NEW-SN-20260812')
+  await selectOptionContaining(page, dialog, '原设备 SN', replacementSource)
+  await expect(dialog.locator('.el-form-item', { hasText: '原设备型号' }).locator('input')).not.toHaveValue('')
+  await expect(dialog.locator('.el-form-item', { hasText: '原设备类型' }).locator('input')).not.toHaveValue('')
+  await dialog.getByPlaceholder('请输入新设备 SN').fill('E2E-DEALER-NEW-SN-20260812')
+  await dialog.getByPlaceholder('请输入新设备名称').fill('端到端换机设备')
+  const replacementModelField = dialog.locator('.el-form-item', { hasText: '新设备型号' })
+  await replacementModelField.locator('.el-select').click()
+  const replacementModelControls = await replacementModelField.getByRole('combobox').getAttribute('aria-controls')
+  await page.locator(`#${replacementModelControls}`).getByRole('option', { name: '海水淡化器 SW-04' }).click()
+  await expect(dialog.locator('.el-form-item', { hasText: '型号编码' }).locator('input')).toHaveValue('SW-04')
+  await expect(dialog.locator('.el-form-item', { hasText: '设备类型' }).last().locator('input')).toHaveValue('水处理设备')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   let row = page.locator('.business-table .el-table__body tr', { hasText: 'E2E-DEALER-NEW-SN-20260812' }).first()
   await expect(row).toBeVisible()
+  await expect(row).toContainText('端到端换机设备')
+  await expect(row).toContainText('SW-04')
+  await expect(row).toContainText('水处理设备')
   await row.getByRole('button', { name: '处理' }).click()
   let risk = page.locator('.risk-dialog')
   await risk.getByLabel('操作原因').fill('端到端换 SN 确认')
@@ -459,27 +826,26 @@ test('dealer-created records continue through platform approval and target-deale
   await expect(row).toContainText('已完成')
 
   await page.goto('/#/service-transfer')
-  await page.getByRole('button', { name: '发起转移' }).click()
+  await page.getByRole('button', { name: '发起售后转移' }).click()
   dialog = page.locator('.entity-dialog')
-  await dialog.getByPlaceholder('请输入设备 SN').fill(transferSource)
-  await dialog.getByPlaceholder('请输入设备 SN').blur()
-  await selectFirstOption(page, dialog, '目标代理商')
+  await selectOptionContaining(page, dialog, '设备 SN', transferSource)
+  await selectFirstOption(page, dialog, '目标经销商')
+  await dialog.locator('.el-form-item', { hasText: '转移原因' }).locator('textarea').fill('端到端售后转移')
   await dialog.getByRole('button', { name: '保存', exact: true }).click()
   row = page.locator('.business-table .el-table__body tr', { hasText: transferSource }).first()
   await expect(row).toBeVisible()
-  expect(selectedTransferSN).not.toBe(transferSource)
 
   await logout(page)
   await login(page, 'service@qingdao.cn', 'Dealer123!')
   await page.goto('/#/service-transfer')
   row = page.locator('.business-table .el-table__body tr', { hasText: transferSource }).first()
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: '处理' }).click()
+  await row.getByRole('button', { name: '确认售后转移' }).click()
   risk = page.locator('.risk-dialog')
   await risk.locator('.el-form-item', { hasText: '确认结果' }).locator('.el-select').click()
   await page.getByRole('option', { name: '确认接收', exact: true }).click()
   await risk.getByLabel('操作原因').fill('目标经销商端到端确认')
-  await risk.getByRole('button', { name: '确认确认转移' }).click()
+  await risk.getByRole('button', { name: '确认确认售后转移' }).click()
   await expect(row).toContainText('已完成')
 
   await logout(page)
@@ -489,33 +855,20 @@ test('dealer-created records continue through platform approval and target-deale
   await expect(row).toBeVisible()
   await row.getByRole('button', { name: '通过' }).click()
   risk = page.locator('.risk-dialog')
-  await risk.locator('.el-form-item', { hasText: '审批意见' }).locator('textarea').fill('平台端到端审批')
-  await risk.getByRole('button', { name: '确认审批通过' }).click()
+  await risk.locator('.el-form-item', { hasText: '确认意见' }).locator('textarea').fill('平台端到端审批')
+  await risk.getByRole('button', { name: '确认业务确认通过' }).click()
   await expect(row).toContainText('已审批')
-  await row.getByRole('button', { name: '填写发货' }).click()
+  await row.getByRole('button', { name: '物料发货' }).click()
   risk = page.locator('.risk-dialog')
   await selectFirstOption(page, risk, '快递公司')
   await risk.getByPlaceholder('请输入物流单号').fill('E2E-DEALER-SHIP-20260812')
-  await risk.getByRole('button', { name: '确认填写发货' }).click()
+  await risk.getByRole('button', { name: '确认物料发货' }).click()
   await expect(row).toContainText('运输中')
-  await row.getByRole('button', { name: '查看' }).click()
+  await row.getByRole('button', { name: '查看详情', exact: true }).click()
   await page.getByRole('tab', { name: '物流信息' }).click()
   await expect(page.locator('.detail-dialog')).toContainText('E2E-DEALER-SHIP-20260812')
   await page.locator('.detail-dialog').getByRole('button', { name: '关闭', exact: true }).click()
 
-  await page.goto('/#/warehouse?tab=transfer')
-  row = page.locator('.business-table .el-table__body tr', { hasText: warehouseCode }).first()
-  await expect(row).toBeVisible()
-  await row.getByRole('button', { name: '处理' }).click()
-  risk = page.locator('.risk-dialog')
-  await risk.locator('.el-form-item', { hasText: '处理结果' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '审批通过', exact: true }).click()
-  await risk.getByLabel('操作原因').fill('平台端到端调货审批')
-  await risk.getByRole('button', { name: '确认处理' }).click()
-  await expect(row).toContainText('已完成')
-
-  await page.goto('/#/issuance')
-  await expect(page.locator('.business-table .el-table__body tr').first()).toContainText('运输中')
 })
 
 test('App-originated repair, message and complaint records complete their backend workflows', async ({ page }) => {
@@ -540,14 +893,14 @@ test('App-originated repair, message and complaint records complete their backen
   risk = page.locator('.risk-dialog')
   await risk.locator('.el-form-item', { hasText: '回复内容' }).locator('textarea').fill('已完成远程排查，准备关闭工单。')
   await risk.getByRole('button', { name: '确认回复用户' }).click()
-  await row.getByRole('button', { name: '完成' }).click()
+  await clickRowAction(page, row, '标记完成')
   risk = page.locator('.risk-dialog')
   await risk.locator('.el-form-item', { hasText: '处理结果' }).locator('textarea').fill('设备恢复正常，工单处理完成。')
   await risk.getByRole('button', { name: '确认标记完成' }).click()
   await page.goto('/#/repairs?tab=completed')
   row = page.locator('.business-table .el-table__body tr', { hasText: repairCode }).first()
   await expect(row).toBeVisible()
-  await row.getByRole('button', { name: '查看' }).click()
+  await row.getByRole('button', { name: '查看详情', exact: true }).click()
   await page.getByRole('tab', { name: '回复记录' }).click()
   await expect(page.locator('.detail-dialog')).toContainText('已完成远程排查')
   await page.locator('.detail-dialog').getByRole('button', { name: '关闭', exact: true }).click()
@@ -579,12 +932,68 @@ test('App-originated repair, message and complaint records complete their backen
   risk = page.locator('.risk-dialog')
   await risk.locator('.el-form-item', { hasText: '回复内容' }).locator('textarea').fill('已联系用户核实投诉情况。')
   await risk.getByRole('button', { name: '确认回复用户' }).click()
-  await row.getByRole('button', { name: '完成' }).click()
+  await clickRowAction(page, row, '标记完成')
   risk = page.locator('.risk-dialog')
   await risk.locator('.el-form-item', { hasText: '处理结果' }).locator('textarea').fill('问题已解决并完成回访。')
   await risk.getByRole('button', { name: '确认标记完成' }).click()
   await page.goto('/#/complaints?tab=completed')
   await expect(page.locator('.business-table .el-table__body tr', { hasText: complaintCode })).toBeVisible()
+})
+
+test('representative workflow states stay visible and message escalation remains actionable', async ({ page }) => {
+  test.setTimeout(120_000)
+  await login(page)
+
+  await page.goto('/#/materials?tab=productPurchase')
+  const purchaseRows = page.locator('.business-table .el-table__body tr')
+  await expect(purchaseRows).toHaveCount(5)
+  await expect(page.locator('.business-table')).toContainText('待业务确认')
+  await expect(page.locator('.business-table')).toContainText('待财务确认')
+  await expect(page.locator('.business-table')).toContainText('待仓库发货')
+  await expect(page.locator('.business-table')).toContainText('已发货')
+  await expect(page.locator('.business-table')).toContainText('已完成')
+
+  for (const [tab, text] of [['target', '待处理'], ['fee', '待总部审批'], ['completed', '已完成'], ['rejected', '已拒绝']] as const) {
+    await page.goto(`/#/service-transfer?tab=${tab}`)
+    await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+    await expect(page.locator('.business-table')).toContainText(text)
+  }
+
+  for (const tab of ['pending', 'approved', 'rejected']) {
+    await page.goto(`/#/installation-transfers?tab=${tab}`)
+    await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+  }
+
+  await page.goto('/#/approval-center?tab=pending')
+  await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+  await page.goto('/#/approval-center?tab=completed')
+  await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+  await page.goto('/#/approval-center?tab=rejected')
+  await expect(page.locator('.business-table .el-table__body tr').first()).toBeVisible()
+
+  await page.goto('/#/messages?tab=unreplied')
+  await expect(page.getByRole('heading', { name: '客服留言' })).toBeVisible()
+  let row = page.locator('.business-table .el-table__body tr').first()
+  await expect(row).toBeVisible()
+  const messageContent = (await row.locator('td').nth(2).textContent())!.trim()
+  await clickRowAction(page, row, '转发经销商')
+  let risk = page.locator('.risk-dialog')
+  await selectFirstOption(page, risk, '接收经销商')
+  await risk.getByLabel('操作原因').fill('先转交属地经销商核实')
+  await risk.getByRole('button', { name: '确认转发经销商' }).click()
+
+  await page.goto('/#/messages?tab=all')
+  await expect(page.getByRole('tab', { name: '全部留言' })).toHaveAttribute('aria-selected', 'true')
+  row = page.locator('.business-table .el-table__body tr', { hasText: messageContent }).first()
+  await expect(row).toContainText('已转发')
+  await clickRowAction(page, row, '转单到总部')
+  risk = page.locator('.risk-dialog')
+  await risk.getByLabel('操作原因').fill('经销商核实后转总部统一回复')
+  await risk.getByRole('button', { name: '确认转单总部' }).click()
+  await page.goto('/#/messages?tab=unreplied')
+  row = page.locator('.business-table .el-table__body tr', { hasText: messageContent }).first()
+  await expect(row).toBeVisible()
+  await expect(row.getByRole('button', { name: '回复' })).toBeVisible()
 })
 
 test('approval flow create stays visible and uses generated identifiers', async ({ page }) => {
@@ -594,7 +1003,9 @@ test('approval flow create stays visible and uses generated identifiers', async 
   await expect(tableRows.first()).toBeVisible()
   const before = await tableRows.count()
   await page.getByRole('button', { name: '新增审批流程' }).click()
-  await page.getByPlaceholder('请输入流程名称').fill('E2E 物料审批流程')
+  await page.getByPlaceholder('请输入流程名称').fill('E2E 调货备用审批流程')
+  await page.locator('.el-form-item', { hasText: '适用菜单' }).locator('.el-select').click()
+  await page.getByRole('option', { name: '仓库设备（调货审批）', exact: true }).click()
   await page.locator('.el-form-item', { hasText: '审核层级' }).locator('.el-select').click()
   await page.getByRole('option', { name: '平台直接审核', exact: true }).click()
   const memberSelect = page.locator('.el-form-item', { hasText: '平台审核人员' }).locator('.el-select')
@@ -602,13 +1013,37 @@ test('approval flow create stays visible and uses generated identifiers', async 
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
   await page.locator('.el-form-item', { hasText: '启用状态' }).locator('.el-select').click()
-  await page.getByRole('option', { name: '正常', exact: true }).click()
+  await page.getByRole('option', { name: '已禁用', exact: true }).click()
   await page.getByRole('button', { name: '保存', exact: true }).click()
-  const row = page.locator('.business-table .el-table__body tr', { hasText: 'E2E 物料审批流程' }).first()
+  const row = page.locator('.business-table .el-table__body tr', { hasText: 'E2E 调货备用审批流程' }).first()
   await expect(row).toBeVisible()
-  await expect(row).toContainText('物料申请')
+  await expect(row).toContainText('仓库设备（调货审批）')
   await expect(page.locator('.business-table .el-table__body tr')).toHaveCount(before + 1)
   await expect(row.locator('.main-cell small')).toHaveText(/^APF-\d{11}$/)
+})
+
+test('module export follows the role export permission and current tab', async ({ page }) => {
+  await login(page)
+  await page.goto('/#/devices?tab=online')
+  const exportButton = page.getByTitle('导出当前筛选结果')
+  await expect(exportButton).toBeVisible()
+  const downloadPromise = page.waitForEvent('download')
+  await exportButton.click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toContain('设备管理-已连接')
+
+  await logout(page)
+  await page.evaluate(() => {
+    const key = 'shark-sister-admin.db.v15'
+    const database = JSON.parse(localStorage.getItem(key) || '{}')
+    const role = database.records.roles.find((item: Record<string, unknown>) => item.roleKey === 'tier1')
+    role.permissions = role.permissions.filter((permission: string) => permission !== 'devices:export')
+    localStorage.setItem(key, JSON.stringify(database))
+  })
+  await page.reload()
+  await login(page, 'tier1@dealer.cn', 'Dealer123!')
+  await page.goto('/#/devices')
+  await expect(page.getByTitle('导出当前筛选结果')).toHaveCount(0)
 })
 
 test('business pages fill supported viewports and keep functional text readable', async ({ page }) => {
@@ -681,6 +1116,7 @@ test('Banner uses the V3.2 text jump link and fixed enabled states', async ({ pa
 })
 
 test('administrator creation, first-password setup and disable affect login', async ({ page }) => {
+  test.setTimeout(60_000)
   await login(page)
   await page.goto('/#/admins')
   await page.getByRole('button', { name: '新增管理员账号' }).click()
@@ -708,7 +1144,7 @@ test('administrator creation, first-password setup and disable affect login', as
   await login(page)
   await page.goto('/#/admins')
   const row = page.locator('.business-table .el-table__body tr', { hasText: '端到端客服' }).first()
-  await row.getByRole('button', { name: '禁用', exact: true }).click()
+  await clickRowAction(page, row, '禁用')
   await page.getByLabel('操作原因').fill('停用测试账号')
   await page.getByRole('button', { name: '确认禁用', exact: true }).click()
   await expect(page.locator('.risk-dialog')).toHaveCount(0)

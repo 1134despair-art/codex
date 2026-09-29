@@ -1,4 +1,5 @@
 node_modules/
+node_modules.*/
 dist/
 coverage/
 test-results/
@@ -6,6 +7,9 @@ playwright-report/
 release/
 screenshots/generated/
 screenshots/ui-check/
+.review/
+artifacts/
+package-lock.json
 *.log
 *.err.log
 *.out.log

@@ -1,10 +1,14 @@
-# 鲨鱼妹妹后台 V3.2 需求覆盖
+# 鲨鱼妹妹后台 V3.2 需求登记覆盖
+
+> 说明：下方比例表示 213 条需求均已登记路由、交互、边界和测试编号，不等同于 213 条业务行为已全部通过。功能验收必须同时以对应单元测试、Playwright 流程和人工场景复核为准，禁止仅凭本表“通过”字段宣称交付完成。
 
 - 唯一基准：`筛选明细!A4:H216`
 - 总需求：213
 - 前端通过：208/208
 - 后端豁免：5
-- 前端一致率：100%
+- 登记完整率：100%
+- 行为回归：323 项单元测试（v14）
+- 本轮重点闭环：跨区安装审核、双重身份、服务器航点隐私、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置
 
 | 需求 ID | Excel 行 | Excel 一级模块 | 系统语义模块 | 路由 | 状态 | 测试编号 |
 |---|---:|---|---|---|---|---|
@@ -42,7 +46,7 @@
 | REQ-USERS-035 | 35 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
 | REQ-USERS-036 | 36 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
 | REQ-USERS-037 | 37 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
-| REQ-USERS-038 | 38 | 用户管理 | 用户管理 | /users | 通过 | UT-USER-RELATIONS |
+| REQ-USERS-038 | 38 | 用户管理 | 用户管理 | /users | 通过 | UT-WAYPOINT-PRIVACY |
 | REQ-DEVICES-039 | 39 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |
 | REQ-DEVICES-040 | 40 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |
 | REQ-DEVICES-041 | 41 | 设备管理 | 设备管理 | /devices | 通过 | UT-DEVICE-SCOPE |

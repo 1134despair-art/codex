@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts/core'
 import { PieChart } from 'echarts/charts'
 import { LegendComponent, TitleComponent, TooltipComponent } from 'echarts/components'
@@ -20,6 +20,26 @@ const counts = ref<Record<string, number>>({})
 const tasks = ref<EntityRecord[]>([])
 const deviceDistribution = ref<Array<{ name: string; value: number }>>([])
 const updatedAt = ref('')
+const period = ref<'today' | '7d' | '30d'>('today')
+const sourceUsers = ref<EntityRecord[]>([])
+const sourceDevices = ref<EntityRecord[]>([])
+const sourceRepairs = ref<EntityRecord[]>([])
+const sourceMessages = ref<EntityRecord[]>([])
+const periodLabel = computed(() => ({ today: '今日', '7d': '近 7 天', '30d': '近 30 天' })[period.value])
+
+function inPeriod(record: EntityRecord, field = 'createdAt') {
+  const date = new Date(String(record[field] || record.createdAt)).getTime()
+  const start = new Date(); start.setHours(0, 0, 0, 0)
+  if (period.value === 'today') return date >= start.getTime()
+  return date >= Date.now() - (period.value === '7d' ? 7 : 30) * 86_400_000
+}
+
+function recalculatePeriod() {
+  counts.value.todayUsers = sourceUsers.value.filter((item) => inPeriod(item)).length
+  counts.value.todayBindings = sourceDevices.value.filter((item) => inPeriod(item, 'boundAt')).length
+  counts.value.repairsCompleted = sourceRepairs.value.filter((item) => item.status === 'completed' && inPeriod(item, 'completedAt')).length
+  counts.value.messagesCompleted = sourceMessages.value.filter((item) => item.status === 'completed' && inPeriod(item, 'updatedAt')).length
+}
 
 const metrics = computed(() => [
   { label: '注册用户总数', value: counts.value.users || 0, icon: 'users', meta: '当前数据域', delta: '实时', tone: 'blue', route: '/users' },
@@ -76,6 +96,11 @@ async function load() {
     todayBindings: deviceResult.data.filter((item) => String(item.boundAt || '').startsWith(today)).length,
   }
   tasks.value = repairResult.rows
+  sourceUsers.value = userResult.data
+  sourceDevices.value = deviceResult.data
+  sourceRepairs.value = (await mockService.all('repairs')).data
+  sourceMessages.value = (await mockService.all('messages')).data
+  recalculatePeriod()
   const typeMap = new Map<string, number>()
   deviceResult.data.forEach((device) => typeMap.set(device.name, (typeMap.get(device.name) || 0) + 1))
   deviceDistribution.value = [...typeMap.entries()].map(([name, value]) => ({ name: name.replace(/\s[A-Z]{2}-\d+$/, ''), value }))
@@ -86,6 +111,7 @@ async function load() {
 
 function resize() { distributionChart?.resize() }
 onMounted(() => { load(); window.addEventListener('resize', resize) })
+watch(period, recalculatePeriod)
 onBeforeUnmount(() => { window.removeEventListener('resize', resize); distributionChart?.dispose() })
 </script>
 
@@ -105,7 +131,7 @@ onBeforeUnmount(() => { window.removeEventListener('resize', resize); distributi
 
     <div class="dashboard-primary-grid">
       <section class="surface overview-panel">
-        <div class="section-head"><div><h2>数据概览</h2><p>今日核心业务变化</p></div><el-button>今日 <AppIcon name="chevron-down" :size="14" /></el-button></div>
+        <div class="section-head"><div><h2>数据概览</h2><p>{{ periodLabel }}核心业务变化，按创建/完成时间统计</p></div><el-select v-model="period" aria-label="统计周期" style="width:110px"><el-option label="今日" value="today" /><el-option label="近 7 天" value="7d" /><el-option label="近 30 天" value="30d" /></el-select></div>
         <div class="overview-metric-grid">
           <article v-for="metric in overviewMetrics" :key="metric.label" class="overview-metric" :data-tone="metric.tone">
             <span>{{ metric.label }}</span><div><strong>{{ metric.value }}</strong><small>{{ metric.unit }}</small></div><p>数据口径 <b>{{ metric.delta }}</b></p>

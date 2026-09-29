@@ -1,0 +1,7 @@
+{
+  "application": "鲨鱼妹妹运营管理后台",
+  "version": "3.2",
+  "buildDate": "2026-08-26",
+  "routing": "hash",
+  "entry": "index.html"
+}

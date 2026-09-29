@@ -2,7 +2,7 @@ export type RoleKey = 'platform' | 'tier1' | 'tier2' | 'custom'
 export type DataDomain = 'cn' | 'global'
 export type DataScope = 'all' | 'descendants' | 'self'
 export type CrudMode = 'full' | 'managed' | 'workflow' | 'readonly'
-export type FieldType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'number' | 'switch' | 'image' | 'firmware' | 'password'
+export type FieldType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'lineItems' | 'componentItems' | 'date' | 'number' | 'switch' | 'image' | 'firmware' | 'pdf' | 'password'
 export type FilterType = 'text' | 'select' | 'dateRange'
 export type RequirementStatus = '通过' | '后端豁免' | '未通过'
 
@@ -63,6 +63,18 @@ export interface PageQuery {
   orderByColumn?: string
   isAsc?: 'asc' | 'desc'
   filters?: Record<string, unknown>
+  relationFilters?: Record<string, string | string[]>
+}
+
+export interface RelatedNavigationItem {
+  key: string
+  label: string
+  icon: string
+  targetModule: string
+  targetTab?: string
+  relationFilters: Record<string, string | string[]>
+  count: number
+  level: 'primary' | 'secondary'
 }
 
 export interface EntityRecord {
@@ -140,6 +152,7 @@ export interface FieldConfig {
   max?: number
   sensitive?: boolean
   requiredOnCreate?: boolean
+  visibleWhen?: { field: string; value?: string | number | boolean; values?: Array<string | number | boolean> }
 }
 
 export interface FilterConfig {
@@ -151,6 +164,7 @@ export interface FilterConfig {
   options?: Array<{ label: string; value: string }>
   optionSource?: string
   exact?: boolean
+  hidden?: boolean
 }
 
 export interface DetailTabConfig {
@@ -197,10 +211,11 @@ export interface ModuleConfig {
   rowActions?: string[]
   actions?: ActionConfig[]
   auditOnly?: boolean
+  exportable?: boolean
 }
 
 export interface StoredDatabase {
-  version: 8
+  version: 15
   updatedAt: string
   records: Record<string, EntityRecord[]>
 }

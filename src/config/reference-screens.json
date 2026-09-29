@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://127.0.0.1:4173/ui-prototype/",
+  "baseUrl": "./",
   "generatedAt": "2026-08-10T03:57:48.289Z",
   "errors": [],
   "narrowChecks": [
@@ -1650,38 +1650,16 @@
       }
     },
     {
-      "id": "user-detail-waypoints",
-      "hash": "#/users",
-      "action": "user-detail",
-      "modalTab": "waypoints",
-      "label": "海风与帆 / 航点数据",
-      "file": "107-user-detail-waypoints.png",
-      "size": 98860,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 1147
-      }
+      "id": "page-support-settings-all",
+      "hash": "#/support-settings?tab=all",
+      "label": "客服信息 / 全部配置",
+      "file": "107-page-support-settings-all.png"
     },
     {
-      "id": "user-detail-logs",
-      "hash": "#/users",
-      "action": "user-detail",
-      "modalTab": "logs",
-      "label": "海风与帆 / 操作记录",
-      "file": "108-user-detail-logs.png",
-      "size": 105384,
-      "valid": true,
-      "layout": {
-        "hasMain": true,
-        "viewportWidth": 1440,
-        "scrollWidth": 1440,
-        "clippedControls": 0,
-        "bodyText": 1219
-      }
+      "id": "page-after-sales-types-all",
+      "hash": "#/after-sales-types?tab=all",
+      "label": "售后类型配置 / 全部类型",
+      "file": "108-page-after-sales-types-all.png"
     },
     {
       "id": "repair-detail-overview",

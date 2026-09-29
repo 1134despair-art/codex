@@ -11,6 +11,13 @@ pnpm dev
 pnpm build
 ```
 
+Jenkins / 原型广场统一使用：
+
+```bash
+npm install
+npm run build:prod
+```
+
 开发地址：`http://127.0.0.1:4174/#/login`。构建产物位于 `dist/`，可部署到任意静态文件服务，也可直接验证：
 
 ```bash

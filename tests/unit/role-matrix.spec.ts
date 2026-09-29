@@ -7,19 +7,19 @@ import { useAuthStore } from '@/stores/auth'
 
 const expectedMenus = {
   platform: [
-    'dashboard', 'users', 'dealers', 'projects', 'devices', 'warehouse', 'ota',
-    'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
-    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow',
-    'payments', 'payment-settings', 'banners', 'admins', 'roles', 'logs',
+    'dashboard', 'approval-center', 'approval-flow', 'users', 'dealers', 'sales-regions', 'projects', 'installation-transfers', 'devices', 'product-catalog', 'product-categories', 'material-catalog', 'warehouses', 'warehouse-locations', 'warehouse', 'ota',
+    'repairs', 'messages', 'complaints', 'materials', 'issuance',
+    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'after-sales-types',
+    'payments', 'payment-settings', 'banners', 'faq-documents', 'support-settings', 'launch-settings', 'app-versions', 'admins', 'roles', 'logs',
   ],
   tier1: [
-    'dashboard', 'users', 'dealers', 'projects', 'devices', 'warehouse',
-    'repairs', 'messages', 'complaints', 'materials', 'material-catalog', 'issuance',
-    'couriers', 'sn-replacement', 'service-transfer', 'warranty', 'approval-flow', 'payments',
+    'dashboard', 'approval-flow', 'users', 'dealers', 'projects', 'devices', 'product-catalog',
+    'repairs', 'messages', 'complaints', 'materials', 'issuance',
+    'sn-replacement', 'service-transfer', 'warranty', 'payments',
   ],
   tier2: [
-    'dashboard', 'projects', 'devices', 'warehouse', 'repairs', 'messages', 'complaints',
-    'materials', 'material-catalog', 'issuance', 'couriers', 'sn-replacement',
+    'dashboard', 'projects', 'devices', 'product-catalog', 'repairs', 'messages', 'complaints',
+    'materials', 'issuance', 'sn-replacement',
     'service-transfer', 'warranty', 'payments',
   ],
 } as const

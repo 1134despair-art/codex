@@ -14,16 +14,16 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: '海风与帆', account: '13812345678', category: '手机', status: 'normal', deviceCount: 3, lastActive: '10 分钟前' },
     { name: 'Captain Allen', account: 'allen@oceanmail.com', category: 'Google', status: 'normal', deviceCount: 1, lastActive: '1 小时前' },
     { name: '远航号', account: '15912341033', category: '微信', status: 'normal', deviceCount: 5, lastActive: '昨天 18:03' },
-    { name: 'Marina M', account: 'marina@example.co.uk', category: '邮箱', status: 'normal', deviceCount: 0, lastActive: '08-07 10:21' },
+    { name: 'Marina M', account: 'APPID-9F03A12C', category: 'APPID', status: 'normal', deviceCount: 0, lastActive: '08-07 10:21' },
     { name: '蓝鲸 07', account: '13712349004', category: '手机', status: 'disabled', deviceCount: 2, lastActive: '07-30 15:42' },
   ],
   dealers: [
-    { name: '深圳海航设备有限公司', category: '一级', status: 'normal', account: 'service@haihang.cn', organizationId: 'dealer-t1-sz', ownerId: 'dealer-t1-sz', domain: 'cn', deviceCount: 1286 },
-    { name: '厦门蓝湾船舶服务', category: '二级', status: 'normal', account: 'service@lanwan.cn', organizationId: 'dealer-t2-xm', ownerId: 'dealer-t2-xm', parentDealerId: 'dealer-t1-sz', domain: 'cn', deviceCount: 246 },
+    { name: '深圳海航设备有限公司', category: '一级', status: 'normal', account: 'service@haihang.cn', organizationId: 'dealer-t1-sz', ownerId: 'dealer-t1-sz', domain: 'cn', defaultWarrantyYears: 2, deviceCount: 1286 },
+    { name: '厦门蓝湾船舶服务', category: '二级', status: 'normal', account: 'service@lanwan.cn', organizationId: 'dealer-t2-xm', ownerId: 'dealer-t2-xm', parentDealerId: 'dealer-t1-sz', domain: 'cn', defaultWarrantyYears: 2, deviceCount: 246 },
     { name: 'Pacific Marine Systems', category: '一级', status: 'normal', account: 'ops@pacificmarine.us', organizationId: 'dealer-t1-us', ownerId: 'dealer-t1-us', domain: 'global', deviceCount: 982 },
     { name: 'Harbour Tech Southampton', category: '二级', status: 'normal', account: 'service@harbour.uk', organizationId: 'dealer-t2-uk', ownerId: 'dealer-t2-uk', parentDealerId: 'dealer-t1-us', domain: 'global', deviceCount: 118 },
-    { name: '宁波远洋机电', category: '二级', status: 'disabled', account: 'service@nbyy.cn', organizationId: 'dealer-t2-nb', ownerId: 'dealer-t2-nb', parentDealerId: 'dealer-t1-sz', domain: 'cn', deviceCount: 86 },
-    { name: '青岛远海船舶设备', category: '一级', status: 'normal', account: 'service@qingdao.cn', organizationId: 'dealer-t1-qd', ownerId: 'dealer-t1-qd', domain: 'cn', deviceCount: 92 },
+    { name: '宁波远洋机电', category: '二级', status: 'disabled', account: 'service@nbyy.cn', organizationId: 'dealer-t2-nb', ownerId: 'dealer-t2-nb', parentDealerId: 'dealer-t1-sz', domain: 'cn', defaultWarrantyYears: 2, deviceCount: 86 },
+    { name: '青岛远海船舶设备', category: '一级', status: 'normal', account: 'service@qingdao.cn', organizationId: 'dealer-t1-qd', ownerId: 'dealer-t1-qd', domain: 'cn', defaultWarrantyYears: 2, deviceCount: 92 },
   ],
   projects: [
     { name: '远航 18', category: '制冰机 CI-02', status: 'normal', summary: '船东：张海宁 · 质保至 2028-08-09', deviceSN: 'BX202608100021' },
@@ -37,6 +37,21 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { code: 'BX202608070045', name: '顶流机 TF-01', status: 'offline', activation: 'inactive', firmware: 'v2.4.0', account: '-', summary: '24V 智能控制' },
     { code: 'BX202607280311', name: '电池组 BP-03', status: 'offline', activation: 'normal', firmware: 'v3.1.1', account: 'marina@example.co.uk', summary: '48V 200Ah' },
     { code: 'BX202606120094', name: '网络检测仪 ND-04', status: 'disabled', activation: 'normal', firmware: 'v1.4.6', account: 'marina@example.co.uk', summary: '4G/卫星' },
+  ],
+  'product-catalog': [
+    { code: 'PROD-001', name: '顶流机', deviceType: '船载设备', deviceModel: 'TF-01', descriptor: '顶流机 TF-01', specification: '24V/48V 智能推流', referencePrice: 68000, status: 'normal' },
+    { code: 'PROD-002', name: '制冰机', deviceType: '制冷设备', deviceModel: 'CI-02', descriptor: '制冰机 CI-02', specification: '220V · 60kg/日', referencePrice: 92000, status: 'normal' },
+    { code: 'PROD-003', name: '海水淡化器', deviceType: '水处理设备', deviceModel: 'SW-04', descriptor: '海水淡化器 SW-04', specification: '220V · 400L/日', referencePrice: 118000, status: 'normal' },
+  ],
+  warehouses: [
+    { code: 'WHS-CN-001', name: '平台中心仓', category: '中心仓', region: '中国 · 广东', address: '深圳市宝安区物联二路 1 号', manager: '平台仓库组', status: 'normal' },
+    { code: 'WHS-CN-002', name: '华南备件仓', category: '区域仓', region: '中国 · 福建', address: '厦门市海沧区港航路 18 号', manager: '华南仓储组', status: 'normal' },
+    { code: 'WHS-GL-001', name: '海外服务仓', category: '海外仓', region: '美国 · California', address: 'Long Beach Service Center', manager: 'Global Warehouse', status: 'normal', domain: 'global' },
+  ],
+  'warehouse-locations': [
+    { code: 'A-01-01', name: 'A 区 01-01', warehouseId: 'warehouses-0001', warehouseName: '平台中心仓', capacity: 80, status: 'normal' },
+    { code: 'A-03-18', name: 'A 区 03-18', warehouseId: 'warehouses-0001', warehouseName: '平台中心仓', capacity: 60, status: 'normal' },
+    { code: 'B-01-01', name: 'B 区 01-01', warehouseId: 'warehouses-0002', warehouseName: '华南备件仓', capacity: 40, status: 'normal' },
   ],
   warehouse: [
     { name: '制冰机 CI-02 批次 B2608', category: '在库', status: 'normal', summary: 'A-03-18 · 48 台' },
@@ -89,6 +104,9 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: 'Pacific Marine → Harbour Tech', category: '售后转移', status: 'processing', summary: '等待接收方确认' },
     { name: '华东海事 → 宁波远洋', category: '售后转移', status: 'completed', summary: '已完成归档' },
   ],
+  'installation-transfers': [
+    { name: '远航 26 安装项目', category: '安装跨区审核', status: 'pending', projectCode: 'PRJ-20260821001', deviceSN: 'DL350020260888', factoryRegion: '广东省汕头市', installationRegion: '福建省厦门市', dealer: '厦门海航设备有限公司', summary: '出厂地区与安装地区不一致，等待平台审核' },
+  ],
   warranty: [
     { name: '华南制冰机标准质保', category: '制冰机 CI-02', status: 'normal', summary: '人工费 24 个月 · 物料 24 个月' },
     { name: '北美淡化器延长质保', category: '海水淡化器 SW-04', status: 'normal', summary: '人工费 36 个月 · 物料 30 个月' },
@@ -112,6 +130,12 @@ const templates: Record<string, Array<Partial<EntityRecord>>> = {
     { name: '夏季设备保养指南', category: '首页顶部', status: 'normal', image: './assets/backgrounds/banner-maintenance.png', target: '内容详情 / GUIDE-2026-08', sort: 1 },
     { name: '海水淡化器滤芯活动', category: '首页顶部', status: 'normal', image: './assets/backgrounds/banner-watermaker.png', target: '商品 / SKU-SW-FILTER', sort: 2 },
     { name: 'Marine Service Network', category: '首页顶部', status: 'draft', image: './assets/backgrounds/banner-service-network.png', target: 'Web / service-network', sort: 1, domain: 'global' },
+  ],
+  'faq-documents': [
+    { name: '顶流机使用与故障排查手册', titleEn: 'Surface Jet User and Troubleshooting Manual', category: '常见问题', status: 'published', summary: '遥控器、安装、操作和常见故障处理说明', fileName: '鲨鱼妹妹顶流机中文.pdf', pdfFile: './documents/topflow-machine-manual-zh.pdf', sort: 1 },
+  ],
+  'app-versions': [
+    { code: 'APP-V3.2.0', name: '3.2.0', platform: 'iOS / Android', releaseScope: '全部用户', releaseAt: '2026-08-21', status: 'published', summary: '后台配置、售后与设备管理能力更新' },
   ],
   admins: [
     { name: '林海', category: '平台', status: 'normal', account: 'admin@shark.cn', summary: '平台管理员 · 全部数据' },
@@ -150,12 +174,12 @@ function enrichRecord(moduleKey: string, record: EntityRecord, index: number): E
   const createdDate = record.createdAt.slice(0, 10)
   const shared = { ...record }
   if (moduleKey === 'users') Object.assign(shared, { deviceCount: Number(record.deviceCount ?? sequence % 4), registrationSource: record.category, contact: record.account })
-  if (moduleKey === 'dealers') Object.assign(shared, { tier: record.category === '二级' ? '二级' : '一级', parentDealer: record.category === '二级' ? record.domain === 'global' ? 'Pacific Marine Systems' : '深圳海航设备有限公司' : '-', phone: `1380000${String(1000 + sequence).slice(-4)}`, email: String(record.account || ''), initialPassword: 'Dealer123!', mustChangePassword: true })
+  if (moduleKey === 'dealers') Object.assign(shared, { tier: record.category === '二级' ? '二级' : '一级', parentDealer: record.category === '二级' ? record.domain === 'global' ? 'Pacific Marine Systems' : '深圳海航设备有限公司' : '-', defaultWarrantyYears: Number(record.defaultWarrantyYears || (record.domain === 'cn' ? 2 : 1)), phone: `1380000${String(1000 + sequence).slice(-4)}`, email: String(record.account || ''), initialPassword: 'Dealer123!', mustChangePassword: true })
   if (moduleKey === 'projects') Object.assign(shared, { shipOwner: ['张海宁', 'Allen Carter', '陈远帆'][index % 3], deviceModel: record.category, usageRegion: record.region, warrantyUntil: record.status === 'expired' ? '2026-08-03' : record.status === 'warning' ? '2026-09-22' : '2028-08-09' })
   if (moduleKey === 'devices') Object.assign(shared, { code: index < templates.devices.length ? record.code : `BX2026${String(8101000 + sequence).padStart(8, '0')}`, country: String(record.region).split(' · ')[0], activation: record.activation === 'inactive' ? 'inactive' : 'activated', activationDate: record.activation === 'inactive' ? '' : createdDate, bindingStatus: record.account === '-' ? 'unbound' : 'bound', boundAt: record.account === '-' ? '' : record.createdAt })
   if (moduleKey === 'warehouse') Object.assign(shared, { deviceSN: deviceSn, deviceModel: ['制冰机 CI-02', '海水淡化器 SW-04', '顶流机 TF-01'][index % 3], quantity: 1 + (index % 24), targetDealer: record.category === '在库' ? '-' : record.owner, inboundAt: record.createdAt })
   if (moduleKey === 'ota') Object.assign(shared, { releaseAt: record.status === 'published' ? record.createdAt : '', forceUpdate: index % 3 === 0 ? '是' : '否' })
-  if (moduleKey === 'repairs') Object.assign(shared, { account: contacts[index % contacts.length], deviceSN: deviceSn, faultCategory: faultCategories[index % faultCategories.length], contact: contacts[(index + 1) % contacts.length], description: record.summary, assignee: record.status === 'pending' ? '-' : record.owner })
+  if (moduleKey === 'repairs') Object.assign(shared, { account: contacts[index % contacts.length], deviceSN: deviceSn, faultCategory: faultCategories[index % faultCategories.length], contact: contacts[(index + 1) % contacts.length], description: record.summary, dealerId: record.ownerId, dealer: record.owner, assignee: record.status === 'pending' ? '-' : record.owner })
   if (moduleKey === 'messages') Object.assign(shared, { account: contacts[index % contacts.length], content: record.summary, contact: contacts[(index + 1) % contacts.length], forwardedTo: record.status === 'forwarded' ? record.owner : '-' })
   if (moduleKey === 'complaints') Object.assign(shared, { account: contacts[index % contacts.length], deviceSN: index % 4 === 0 ? '-' : deviceSn, content: record.summary, assignee: record.status === 'pending' ? '-' : record.owner })
   if (moduleKey === 'materials') Object.assign(shared, { dealer: record.owner, materialName: String(record.name).split(' × ')[0], quantity: Number(String(record.name).match(/×\s*(\d+)/)?.[1] || 1), deviceSN: deviceSn, warrantyResult: record.category === '提前申请' && record.status === 'rejected' ? '已过期' : '质保有效', applyTime: record.createdAt })
@@ -169,7 +193,7 @@ function enrichRecord(moduleKey: string, record: EntityRecord, index: number): E
   if (moduleKey === 'warranty') Object.assign(shared, { productType: record.category, dealerId: record.ownerId, dealer: record.owner, laborMonths: index % 2 ? 36 : 24, materialMonths: index % 2 ? 30 : 24 })
   if (moduleKey === 'approval-flow') Object.assign(shared, { category: '流程配置', flowType: 'materials', flowTypeLabel: '物料申请', levels: record.summary || '二级 → 一级 → 平台' })
   if (moduleKey === 'issuance') Object.assign(shared, { materialName: String(record.name).split(' × ')[0], recipient: record.owner, issuedAt: record.createdAt, replacedAt: record.status === 'completed' ? record.updatedAt : '' })
-  if (moduleKey === 'payments') Object.assign(shared, { channel: record.category, paidAt: record.createdAt })
+  if (moduleKey === 'payments') Object.assign(shared, { sourceType: 'app', sourceLabel: 'APP 支付', businessType: 'APP 服务订单', channel: record.category, paidAt: record.createdAt })
   if (moduleKey === 'admins') Object.assign(shared, { role: String(record.summary).split(' · ')[0] || '平台管理员', dataScope: String(record.summary).split(' · ')[1] || record.owner })
   if (moduleKey === 'roles') Object.assign(shared, { permissionCount: 8 + (index % 18), dataScope: record.summary })
   if (moduleKey === 'logs') Object.assign(shared, { account: record.owner || 'admin@shark.cn', operator: record.owner || '林海', operationType: record.category === '登录' ? '登录' : record.status === 'warning' ? '高风险操作' : '业务操作', content: record.summary, ip: '127.0.0.1', deviceInfo: 'Windows · Chromium' })
@@ -245,7 +269,7 @@ export function createSeedDatabase(): StoredDatabase {
     updateMode: index === 0 ? '用户确认更新' : '灰度更新',
     status: 'completed',
   })))
-  const workflowSubjects = ['repairs', 'messages', 'complaints', 'materials', 'warehouse', 'ota', 'service-transfer', 'payments']
+  const workflowSubjects = ['repairs', 'messages', 'complaints', 'materials', 'warehouse', 'ota', 'service-transfer', 'installation-transfers', 'payments']
   records['workflow-events'] = workflowSubjects.flatMap((moduleKey) => records[moduleKey].flatMap((subject) => [0, 1].map((index) => relation('workflow', subject, index, {
     sourceModule: moduleKey,
     title: index === 0 ? '业务记录已创建' : '状态已更新',
@@ -269,7 +293,7 @@ export function createSeedDatabase(): StoredDatabase {
     category,
   })))
   return {
-    version: 8,
+    version: 15,
     updatedAt: new Date().toISOString(),
     records,
   }

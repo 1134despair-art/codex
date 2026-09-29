@@ -32,7 +32,7 @@ async function submit() {
       const session = auth.login(form.account.trim(), form.password)
       await router.push(session.firstLogin ? '/first-password' : '/dashboard')
     } else {
-      if (form.password.length < 8 || form.password !== form.confirmPassword) throw new Error('新密码至少 8 位，且两次输入必须一致。')
+      if (form.password.length < 8 || form.password.length > 20 || form.password !== form.confirmPassword) throw new Error('新密码应为 8-20 位，且两次输入必须一致。')
       auth.completeFirstLogin(form.password)
       ElMessage.success('密码已更新')
       await router.push('/dashboard')
@@ -72,8 +72,8 @@ onMounted(() => {
         <h2>{{ title }}</h2><p class="auth-lead">{{ lead }}</p>
         <el-form label-position="top" @submit.prevent="submit">
           <template v-if="mode === 'first-password'">
-            <el-form-item label="新密码"><el-input v-model="form.password" type="password" show-password /></el-form-item>
-            <el-form-item label="确认新密码"><el-input v-model="form.confirmPassword" type="password" show-password /></el-form-item>
+            <el-form-item label="新密码"><el-input v-model="form.password" type="password" maxlength="20" show-password /></el-form-item>
+            <el-form-item label="确认新密码"><el-input v-model="form.confirmPassword" type="password" maxlength="20" show-password /></el-form-item>
           </template>
           <template v-else>
             <el-form-item label="账号"><el-input v-model="form.account"><template #prefix><AppIcon name="user-round" /></template></el-input></el-form-item>

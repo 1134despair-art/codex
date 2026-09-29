@@ -37,7 +37,7 @@ if (sources.length !== 213) throw new Error(`需求行数异常：期望 213，�
 const registrations = [
   [4, 9, '登录认证', '/login', 'auth:login', 'UT-AUTH-SECURITY', '登录表单校验、验证码刷新、锁定策略和登录日志断言'],
   [10, 19, '首页工作台', '/dashboard', 'dashboard:view', 'E2E-DASHBOARD-REALTIME', '工作台指标、待办、趋势和实时数据刷新断言'],
-  [20, 38, '用户管理', '/users', 'users:view', 'UT-USER-RELATIONS', '用户查询、账号脱敏、状态、设备及航点关联断言'],
+  [20, 38, '用户管理', '/users', 'users:view', 'UT-USER-RELATIONS', '用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言'],
   [39, 59, '设备管理', '/devices', 'devices:view', 'UT-DEVICE-SCOPE', '设备精确查询、唯一性、导入、地区变更、解绑和远程指令断言'],
   [60, 71, '仓库设备管理', '/warehouse', 'warehouse:view', 'UT-WAREHOUSE-TRANSACTION', '入库、出库、调货审批、归属同步与事务回滚断言'],
   [72, 82, 'OTA 管理', '/ota', 'ota:view', 'UT-OTA-INDEPENDENT-TABS', '固件新增、发布、撤回、强制更新与适用设备断言'],
@@ -105,6 +105,14 @@ const records = sources.map(({ excelRow, source }) => {
   const [, , semanticModule, route, permission, testId, evidence] = registrationFor(excelRow)
   const status = semanticModule === '基础设施' ? '后端豁免' : '通过'
   const code = route === '-' ? 'INFRA' : route.replace(/^\//, '').replace(/[^a-z]/g, '').toUpperCase()
+  const meetingOverride = excelRow === 38 ? {
+    pageLocation: '客户端航点保存策略（后台不可见）',
+    interaction: '用户选择保存到服务器时仅持久化关联数据；后台不展示航点坐标和列表',
+    simulationBoundary: 'Demo 只保存服务器同步元数据；本地航点不进入数据库，后台相关接口固定返回空列表',
+    service: 'mockService.related（后台隐私拦截）',
+    evidence: '用户详情只保留基本信息与绑定设备；v13→v14 迁移仅保留 serverSaved 航点且标记 adminVisible=false',
+    testId: 'UT-WAYPOINT-PRIVACY',
+  } : {}
   return {
     id: `REQ-${code}-${String(excelRow).padStart(3, '0')}`,
     excelRow,
@@ -119,6 +127,7 @@ const records = sources.map(({ excelRow, source }) => {
     evidence,
     testId,
     status,
+    ...meetingOverride,
   }
 })
 
@@ -137,11 +146,14 @@ const summary = {
 const manifestText = `// Generated from the final V3.2 Excel requirement baseline. Do not edit manually.\nimport type { RequirementRecord } from '@/types'\n\nexport const requirementManifest = ${JSON.stringify(records, null, 2)} satisfies readonly RequirementRecord[]\n\nexport const requirementCoverageSummary = ${JSON.stringify(summary, null, 2)} as const\n`
 const snapshotText = `${JSON.stringify({ summary, records }, null, 2)}\n`
 const markdownRows = records.map((item) => `| ${item.id} | ${item.excelRow} | ${item.source.primaryModule.replaceAll('\n', '/')} | ${item.semanticModule} | ${item.route} | ${item.status} | ${item.testId} |`).join('\n')
-const markdownText = `# 鲨鱼妹妹后台 V3.2 需求覆盖\n\n- 唯一基准：\`${sourceSheet}!${sourceRange}\`\n- 总需求：${summary.total}\n- 前端通过：${summary.passed}/${summary.frontend}\n- 后端豁免：${summary.backendExempt}\n- 前端一致率：100%\n\n| 需求 ID | Excel 行 | Excel 一级模块 | 系统语义模块 | 路由 | 状态 | 测试编号 |\n|---|---:|---|---|---|---|---|\n${markdownRows}\n`
+const markdownText = `# 鲨鱼妹妹后台 V3.2 需求登记覆盖\n\n> 说明：下方比例表示 213 条需求均已登记路由、交互、边界和测试编号，不等同于 213 条业务行为已全部通过。功能验收必须同时以对应单元测试、Playwright 流程和人工场景复核为准，禁止仅凭本表“通过”字段宣称交付完成。\n\n- 唯一基准：\`${sourceSheet}!${sourceRange}\`\n- 总需求：${summary.total}\n- 前端通过：${summary.passed}/${summary.frontend}\n- 后端豁免：${summary.backendExempt}\n- 登记完整率：100%\n- 行为回归：318 项单元测试（v13）\n- 本轮重点闭环：项目新增与历史、设备子物料、质保起算、组织审批、离线远控、售后转移联动、APPID\n\n| 需求 ID | Excel 行 | Excel 一级模块 | 系统语义模块 | 路由 | 状态 | 测试编号 |\n|---|---:|---|---|---|---|---|\n${markdownRows}\n`
+const currentMarkdownText = markdownText
+  .replace('318 项单元测试（v13）', '323 项单元测试（v14）')
+  .replace('项目新增与历史、设备子物料、质保起算、组织审批、离线远控、售后转移联动、APPID', '跨区安装审核、双重身份、服务器航点隐私、多页首次引导、PDF 文件健康、换件关联报修、客服与售后配置')
 
 const targets = [
   [join(projectRoot, 'src', 'config', 'requirement-manifest.ts'), manifestText],
-  [join(projectRoot, 'docs', 'requirements-coverage.md'), markdownText],
+  [join(projectRoot, 'docs', 'requirements-coverage.md'), currentMarkdownText],
   [join(projectRoot, 'scripts', 'requirement-source-snapshot.json'), snapshotText],
 ]
 

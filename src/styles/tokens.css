@@ -145,13 +145,14 @@
   --radius-full: 999px;
   --border-width: 1px;
   --shadow-surface: 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-surface-raised: 0 6px 20px rgb(16 24 40 / 6%);
   --shadow-dropdown: 0 8px 24px rgb(16 24 40 / 12%);
   --shadow-modal: 0 20px 48px rgb(16 24 40 / 18%);
   --focus-ring: 0 0 0 3px rgb(46 115 248 / 18%);
 
   /* Layout and stable component dimensions. */
   --layout-header-height: 64px;
-  --layout-sidebar-width: 224px;
+  --layout-sidebar-width: 200px;
   --layout-sidebar-collapsed-width: 64px;
   --layout-page-padding: 24px;
   --layout-page-padding-sm: 16px;
@@ -229,6 +230,8 @@ body {
   font-size: var(--font-size-sm);
   line-height: var(--line-height-sm);
   letter-spacing: var(--letter-spacing-default);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,

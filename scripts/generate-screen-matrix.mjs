@@ -9,7 +9,7 @@ const pageCount = screens.filter((screen) => !screen.action && !screen.id.starts
 const authCount = screens.filter((screen) => screen.id.startsWith('auth-')).length
 const overlayCount = screens.filter((screen) => screen.action).length
 const lines = [
-  '# 152 状态验收矩阵',
+  `# ${screens.length} 状态验收矩阵`,
   '',
   `> 共 ${screens.length} 个状态：${authCount} 个认证状态、${pageCount} 个页面/Tab、${overlayCount} 个抽屉和弹窗。截图位于 \`screenshots/generated/\`。`,
   '',

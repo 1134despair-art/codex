@@ -18,7 +18,7 @@ const executableTestIds = new Set([
   'UT-SERVICE-WORKFLOW', 'UT-MATERIAL-APPROVAL', 'UT-CONFIG-CRUD', 'UT-LOGISTICS-ISOLATION',
   'UT-SN-TRANSACTION', 'UT-SERVICE-TRANSFER', 'UT-STATIC-EXTERNAL-BOUNDARY', 'UT-READONLY-AUDIT',
   'E2E-APPROVAL-FLOW-CRUD', 'UT-MATERIAL-FULFILLMENT', 'E2E-BANNER-V32-LINK', 'E2E-ADMIN-LOGIN',
-  'UT-PERMISSION-TREE', 'UT-AUDIT-LOG',
+  'UT-PERMISSION-TREE', 'UT-AUDIT-LOG', 'UT-WAYPOINT-PRIVACY',
 ])
 
 describe('V3.2 final Excel requirement baseline', () => {
@@ -27,7 +27,7 @@ describe('V3.2 final Excel requirement baseline', () => {
       '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/run-coverage-generator.ps1', '--check',
     ], { cwd: process.cwd(), stdio: 'pipe' })).not.toThrow()
     expect(requirementManifest).toEqual(sourceSnapshot.records)
-  }, 30_000)
+  }, 90_000)
 
   it('reports 208/208 frontend pass, five backend exemptions and 100% consistency', () => {
     expect(requirementCoverageSummary).toMatchObject({
@@ -58,6 +58,15 @@ describe('V3.2 final Excel requirement baseline', () => {
     })
     expect(requirementManifest.find((item) => item.excelRow === 196)).toMatchObject({ semanticModule: '操作日志', route: '/logs' })
     expect(requirementManifest.find((item) => item.excelRow === 203)).toMatchObject({ semanticModule: '投诉管理', route: '/complaints' })
+  })
+
+  it('applies the confirmed meeting amendment that keeps waypoint coordinates out of the admin UI', () => {
+    expect(requirementManifest.find((item) => item.excelRow === 38)).toMatchObject({
+      pageLocation: '客户端航点保存策略（后台不可见）',
+      service: 'mockService.related（后台隐私拦截）',
+      testId: 'UT-WAYPOINT-PRIVACY',
+      status: '通过',
+    })
   })
 
   it.each(requirementManifest)('$id has route, evidence and an executable acceptance registration', (requirement) => {

@@ -14,4 +14,7 @@ export default defineConfig({
     port: 4174,
     strictPort: false,
   },
+  build: {
+    manifest: true,
+  },
 })

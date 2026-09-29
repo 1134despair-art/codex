@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import AppIcon from '@/components/AppIcon.vue'
 import { navGroups } from '@/config/modules'
 import { hasPermission } from '@/config/permissions'
+import { pendingApprovalCount } from '@/services/mock'
 import { useAuthStore } from '@/stores/auth'
 import { useDatabaseStore } from '@/stores/database'
 import { usePreferencesStore } from '@/stores/preferences'
@@ -31,6 +32,7 @@ const notifications = computed(() => {
     .slice(0, 20)
 })
 const unreadNotifications = computed(() => notifications.value.filter((item) => item.status === 'unread').length)
+const pendingApprovals = computed(() => pendingApprovalCount())
 
 function runSearch() {
   if (!globalSearch.value.trim()) return
@@ -111,13 +113,13 @@ onBeforeUnmount(() => {
       <nav class="sidebar-scroll" aria-label="主导航">
         <section v-for="group in visibleGroups" :key="group.label" class="nav-group" :class="{ open: isGroupExpanded(group.label), active: group.items.some((item) => item.route === route.name) }">
           <button v-if="!collapsed" class="nav-group-trigger" type="button" :aria-expanded="isGroupExpanded(group.label)" @click="toggleNavGroup(group.label)">
-            <span>{{ group.label }}</span><AppIcon name="chevron-down" :size="14" />
+            <span class="nav-group-label"><span>{{ group.label }}</span><span v-if="group.label === '审批管理' && pendingApprovals && !isGroupExpanded(group.label)" class="nav-badge nav-group-badge" aria-label="待审批数量">{{ pendingApprovals > 99 ? '99+' : pendingApprovals }}</span></span><AppIcon name="chevron-down" :size="14" />
           </button>
           <div class="nav-group-items">
             <template v-for="(item, index) in group.items" :key="item.route">
               <div v-if="!collapsed && item.section && item.section !== group.items[index - 1]?.section" class="nav-subgroup-title">{{ item.section }}</div>
-              <RouterLink :to="`/${item.route}`" class="nav-item" :class="{ 'nav-item--third-level': item.section }" :title="collapsed ? item.label : ''">
-                <AppIcon :name="item.icon" :size="18" /><span v-show="!collapsed">{{ item.label }}</span>
+              <RouterLink :to="`/${item.route}`" class="nav-item" :class="{ 'nav-item--third-level': item.section, 'nav-item--pending': item.route === 'approval-center' && pendingApprovals }" :title="collapsed ? `${item.label}${item.route === 'approval-center' && pendingApprovals ? `（${pendingApprovals} 条待审批）` : ''}` : ''">
+                <AppIcon :name="item.icon" :size="18" /><span v-show="!collapsed" class="nav-label">{{ item.label }}</span><span v-if="item.route === 'approval-center' && pendingApprovals" class="nav-badge" aria-label="待审批数量">{{ pendingApprovals > 99 ? '99+' : pendingApprovals }}</span>
               </RouterLink>
             </template>
           </div>
@@ -126,16 +128,16 @@ onBeforeUnmount(() => {
       <div class="sidebar-foot"><span class="health-dot"></span><span v-show="!collapsed">{{ auth.session?.domain === 'cn' ? '国内服务正常' : '海外服务正常' }} · v3.2</span></div>
     </aside>
     <header class="topbar">
-      <button class="icon-button" title="折叠侧栏" @click="toggleSidebar"><AppIcon name="menu" /></button>
+      <button class="icon-button" type="button" title="折叠侧栏" aria-label="折叠或展开侧栏" @click="toggleSidebar"><AppIcon name="menu" /></button>
       <div class="breadcrumb"><span>{{ breadcrumbParent }}</span><b>/</b><strong>{{ currentTitle === '首页' ? '工作台' : currentTitle }}</strong></div>
       <form class="global-search" @submit.prevent="runSearch"><AppIcon name="search" /><input v-model="globalSearch" aria-label="全局搜索" placeholder="搜索设备 SN、用户、工单或订单"></form>
       <el-dropdown v-if="auth.session?.role === 'platform'" trigger="click" @command="switchDomain">
         <button class="domain-button"><span class="health-dot"></span>{{ auth.session?.domain === 'cn' ? '国内 · CST' : '海外 · PST' }}<AppIcon name="chevron-down" :size="14" /></button>
         <template #dropdown><el-dropdown-menu><el-dropdown-item command="cn">国内数据域 · CST</el-dropdown-item><el-dropdown-item command="global">海外数据域 · PST</el-dropdown-item></el-dropdown-menu></template>
       </el-dropdown>
-      <button class="icon-button notify-button" title="通知中心" @click="openNotifications"><AppIcon name="bell" /><span v-if="unreadNotifications">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span></button>
+      <button class="icon-button notify-button" type="button" title="通知中心" aria-label="打开通知中心" @click="openNotifications"><AppIcon name="bell" /><span v-if="unreadNotifications">{{ unreadNotifications > 99 ? '99+' : unreadNotifications }}</span></button>
       <el-dropdown trigger="click" @command="handleAccount">
-        <button class="account-button" :aria-label="`${auth.session?.displayName}账号菜单`"><span class="avatar">{{ auth.session?.displayName.slice(0, 1) }}</span><strong v-show="!collapsed">{{ auth.session?.displayName }}</strong><AppIcon name="chevron-down" :size="14" /></button>
+        <button class="account-button" type="button" :aria-label="`${auth.session?.displayName}账号菜单`"><span class="avatar">{{ auth.session?.displayName.slice(0, 1) }}</span><strong>{{ auth.session?.displayName }}</strong><AppIcon name="chevron-down" :size="14" /></button>
         <template #dropdown><el-dropdown-menu><el-dropdown-item disabled class="account-menu-summary"><span class="avatar">{{ auth.session?.displayName.slice(0, 1) }}</span><div><strong>{{ auth.session?.displayName }}</strong><small>{{ auth.session?.roleLabel }}</small><small>{{ auth.session?.account }} · {{ auth.session?.domain === 'cn' ? '国内数据域' : '海外数据域' }}</small></div></el-dropdown-item><el-dropdown-item command="password">修改密码</el-dropdown-item><el-dropdown-item v-if="auth.session?.role === 'platform'" command="reset">恢复示例数据</el-dropdown-item><el-dropdown-item divided command="logout">退出登录</el-dropdown-item></el-dropdown-menu></template>
       </el-dropdown>
     </header>

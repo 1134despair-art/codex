@@ -406,7 +406,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -430,7 +430,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -454,7 +454,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -478,7 +478,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -502,7 +502,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -526,7 +526,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -550,7 +550,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -574,7 +574,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -598,7 +598,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -622,7 +622,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -646,7 +646,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -670,7 +670,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -694,7 +694,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -718,7 +718,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -742,7 +742,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -766,7 +766,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -790,7 +790,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -814,7 +814,7 @@ export const requirementManifest = [
     "simulationBoundary": "本地持久化模拟数据库，可恢复示例数据",
     "permission": "users:view",
     "service": "mockService.action",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
+    "evidence": "用户查询、账号脱敏、状态、绑定设备及航点服务器保存隐私断言",
     "testId": "UT-USER-RELATIONS",
     "status": "通过"
   },
@@ -833,13 +833,13 @@ export const requirementManifest = [
     },
     "semanticModule": "用户管理",
     "route": "/users",
-    "pageLocation": "用户详情 / 航点数据 / 航点列表",
-    "interaction": "列表或详情展示",
-    "simulationBoundary": "本地文件元数据与预览模拟，不上传真实文件服务器",
+    "pageLocation": "客户端航点保存策略（后台不可见）",
+    "interaction": "用户选择保存到服务器时仅持久化关联数据；后台不展示航点坐标和列表",
+    "simulationBoundary": "Demo 只保存服务器同步元数据；本地航点不进入数据库，后台相关接口固定返回空列表",
     "permission": "users:view",
-    "service": "mockService.list / related",
-    "evidence": "用户查询、账号脱敏、状态、设备及航点关联断言",
-    "testId": "UT-USER-RELATIONS",
+    "service": "mockService.related（后台隐私拦截）",
+    "evidence": "用户详情只保留基本信息与绑定设备；v13→v14 迁移仅保留 serverSaved 航点且标记 adminVisible=false",
+    "testId": "UT-WAYPOINT-PRIVACY",
     "status": "通过"
   },
   {
@@ -5117,7 +5117,7 @@ export const requirementManifest = [
 ] satisfies readonly RequirementRecord[]
 
 export const requirementCoverageSummary = {
-  "sourceFile": "C:/Users/EDY/Desktop/工作文件/嗨创/入职培训资料/鲨鱼妹妹/后台/outputs/requirements_v3_2/鲨鱼妹妹项目需求-后台管理系统功能列表_V3.2_整理对照版.xlsx",
+  "sourceFile": "D:/D盘文件夹/备注文件/鲨鱼妹妹/后台/outputs/requirements_v3_2/鲨鱼妹妹项目需求-后台管理系统功能列表_V3.2_整理对照版.xlsx",
   "sourceSheet": "筛选明细",
   "sourceRange": "A4:H216",
   "total": 213,

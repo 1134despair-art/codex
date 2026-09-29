@@ -1,6 +1,6 @@
 # 152 状态验收矩阵
 
-> 共 152 个状态：4 个认证状态、96 个页面/Tab、52 个抽屉和弹窗。截图位于 `screenshots/generated/`。
+> 共 152 个状态：4 个认证状态、98 个页面/Tab、50 个抽屉和弹窗。截图位于 `screenshots/generated/`。
 
 | 序号 | 状态 ID | 路由 | 动作 | 浮层 Tab | 截图文件 |
 | ---: | --- | --- | --- | --- | --- |
@@ -110,8 +110,8 @@
 | 104 | `device-detail-service` | `#/devices` | `device-detail` | `service` | `104-device-detail-service.png` |
 | 105 | `user-detail-overview` | `#/users` | `user-detail` | `overview` | `105-user-detail-overview.png` |
 | 106 | `user-detail-devices` | `#/users` | `user-detail` | `devices` | `106-user-detail-devices.png` |
-| 107 | `user-detail-waypoints` | `#/users` | `user-detail` | `waypoints` | `107-user-detail-waypoints.png` |
-| 108 | `user-detail-logs` | `#/users` | `user-detail` | `logs` | `108-user-detail-logs.png` |
+| 107 | `page-support-settings-all` | `#/support-settings?tab=all` | - | - | `107-page-support-settings-all.png` |
+| 108 | `page-after-sales-types-all` | `#/after-sales-types?tab=all` | - | - | `108-page-after-sales-types-all.png` |
 | 109 | `repair-detail-overview` | `#/repairs` | `repair-detail` | `overview` | `109-repair-detail-overview.png` |
 | 110 | `repair-detail-flow` | `#/repairs` | `repair-detail` | `flow` | `110-repair-detail-flow.png` |
 | 111 | `repair-detail-reply` | `#/repairs` | `repair-detail` | `reply` | `111-repair-detail-reply.png` |

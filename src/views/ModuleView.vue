@@ -7,10 +7,22 @@ import DomainDetailPanel from '@/components/DomainDetailPanel.vue'
 import { moduleConfigs, navGroups, statusLabels } from '@/config/modules'
 import { actionPermission, hasPermission } from '@/config/permissions'
 import { mockService } from '@/services/mock'
-import { compressBanner, downloadDeviceTemplate, exportRecords, parseDeviceFile, type DeviceImportRow } from '@/services/excel'
+import {
+  compressBanner,
+  downloadDeviceTemplate,
+  downloadMaterialTemplate,
+  downloadOutboundTemplate,
+  exportRecords,
+  parseDeviceFile,
+  parseMaterialFile,
+  parseOutboundFile,
+  type DeviceImportRow,
+  type DeviceOutboundRow,
+  type MaterialImportRow,
+} from '@/services/excel'
 import { useAuthStore } from '@/stores/auth'
 import { usePreferencesStore } from '@/stores/preferences'
-import type { ActionConfig, ColumnConfig, EntityRecord, FieldConfig } from '@/types'
+import type { ActionConfig, ColumnConfig, EntityRecord, FieldConfig, RelatedNavigationItem } from '@/types'
 
 const props = defineProps<{ moduleKey: string }>()
 const route = useRoute()
@@ -23,8 +35,14 @@ const rows = ref<EntityRecord[]>([])
 const total = ref(0)
 const selected = ref<EntityRecord[]>([])
 const filterValues = reactive<Record<string, unknown>>({})
+const relationFilters = reactive<Record<string, string | string[]>>({})
+const relatedLinks = ref<Record<string, RelatedNavigationItem[]>>({})
 const dynamicOptions = reactive<Record<string, Array<{ label: string; value: string }>>>({})
-const query = reactive({ pageNum: 1, pageSize: preferences.pageSize, keyword: '', status: '', tab: 'all', orderByColumn: '', isAsc: 'desc' as 'asc' | 'desc', filters: filterValues })
+const query = reactive({ pageNum: 1, pageSize: preferences.pageSize, keyword: '', status: '', tab: 'all', orderByColumn: '', isAsc: 'desc' as 'asc' | 'desc', filters: filterValues, relationFilters })
+const categoryRecords = ref<EntityRecord[]>([])
+const categoryKeyword = ref('')
+const selectedCategoryId = ref('all')
+const categoryTreeRef = ref<{ filter: (value: string) => void }>()
 
 const editorOpen = ref(false)
 const editorMode = ref<'create' | 'edit'>('create')
@@ -47,12 +65,17 @@ const prototypeTab = ref('base')
 const importOpen = ref(false)
 const importBusy = ref(false)
 const importRows = ref<DeviceImportRow[]>([])
+const outboundRows = ref<DeviceOutboundRow[]>([])
+const materialImportRows = ref<MaterialImportRow[]>([])
 const importName = ref('')
+const outboundForm = reactive({ targetDealerId: '', summary: '' })
 
 const actionLabels: Record<string, string> = {
-  detail: '查看详情', edit: '编辑', delete: '删除', toggle: '禁用/启用', unbind: '强制解绑', 'remote-disable': '远程禁用', 'remote-enable': '远程启用', 'change-region': '修改销售地区',
+  detail: '查看详情', edit: '编辑', delete: '删除', toggle: '禁用/启用', unbind: '强制解绑', 'remote-disable': '远程禁用', 'remote-enable': '远程启用', 'change-region': '转移销售代理商',
   'reset-password': '重置默认密码', assign: '分配处理', reply: '回复用户', forward: '转发经销商', complete: '标记完成', approve: '审批通过',
-  reject: '审批拒绝', ship: '填写发货', publish: '发布/撤回', process: '流程处理', test: '测试查询', permissions: '配置权限', escalate: '转单到总部',
+  reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'record-expense': '财务确认', 'record-bill': '登记维修账单', publish: '发布/撤回', process: '流程处理', test: '测试查询', permissions: '配置权限', escalate: '转单到总部',
+  'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝',
 }
 
 const prototypeLabels: Record<string, string> = {
@@ -69,7 +92,13 @@ const prototypeLabels: Record<string, string> = {
 
 const currentTab = computed(() => config.value.tabs.find((item) => item.key === query.tab) || config.value.tabs[0])
 const activeFields = computed(() => config.value.tabFields?.[query.tab] || config.value.fields)
+const editorFields = computed(() => activeFields.value.filter((field) => {
+  if (!field.visibleWhen) return true
+  const current = editorForm.value[field.visibleWhen.field]
+  return field.visibleWhen.values ? field.visibleWhen.values.includes(current as never) : current === field.visibleWhen.value
+}))
 const activeFilters = computed(() => config.value.tabFilters?.[query.tab] || config.value.filters)
+const visibleFilters = computed(() => activeFilters.value.filter((filter) => !filter.hidden))
 const activeColumns = computed(() => config.value.tabColumns?.[query.tab] || config.value.columns)
 const activeRowActions = computed(() => config.value.tabRowActions?.[query.tab] ?? config.value.rowActions ?? ['detail'])
 const activePrimaryLabel = computed(() => config.value.primaryByTab ? config.value.primaryByTab[query.tab] : config.value.primaryLabel)
@@ -77,11 +106,23 @@ const canCreate = computed(() => {
   if (!activePrimaryLabel.value || !hasPermission(auth.permissions, `${props.moduleKey}:create`)) return false
   if (props.moduleKey === 'warehouse') return query.tab === 'transfer' ? auth.session?.role !== 'platform' : auth.session?.role === 'platform'
   if (props.moduleKey === 'dealers' && auth.session?.role === 'tier1' && query.tab === 'tier1') return false
-  if (['materials', 'sn-replacement', 'service-transfer', 'warranty'].includes(props.moduleKey)) return auth.session?.role !== 'platform'
+  if (props.moduleKey === 'materials') return ['tier1', 'tier2'].includes(String(auth.session?.role))
+  if (props.moduleKey === 'warranty') return auth.session?.role !== 'platform'
+  if (props.moduleKey === 'issuance') return ['platform', 'custom'].includes(String(auth.session?.role))
+  if (props.moduleKey === 'service-transfer') return ['platform', 'custom', 'tier1', 'tier2'].includes(String(auth.session?.role))
   return true
 })
-const canBatchImport = computed(() => auth.session?.role === 'platform' && (props.moduleKey === 'devices' || props.moduleKey === 'warehouse' && query.tab === 'stock'))
-const drawerTabs = computed(() => config.value.detailTabs)
+const isOutboundImport = computed(() => props.moduleKey === 'warehouse' && query.tab === 'outbound')
+const isMaterialImport = computed(() => props.moduleKey === 'material-catalog')
+const canBatchImport = computed(() => auth.session?.role === 'platform' && (props.moduleKey === 'material-catalog' || props.moduleKey === 'warehouse' && ['stock', 'outbound'].includes(query.tab)))
+const canExport = computed(() => config.value.exportable !== false && hasPermission(auth.permissions, `${props.moduleKey}:export`))
+const batchImportLabel = computed(() => isMaterialImport.value ? '批量导入物料' : props.moduleKey === 'devices' ? '批量导入' : isOutboundImport.value ? '表格出库' : '批量入库')
+const drawerTabs = computed(() => config.value.detailTabs.filter((tab) => {
+  if (props.moduleKey === 'service-transfer' && detailRecord.value && !detailRecord.value.hasFee) return tab.key !== 'expenses'
+  if (props.moduleKey !== 'materials' || !detailRecord.value) return true
+  if (detailRecord.value.category === '设备采购') return tab.key !== 'logistics'
+  return tab.key !== 'expenses'
+}))
 const currentDetailTab = computed(() => drawerTabs.value.find((item) => item.key === detailTab.value) || drawerTabs.value[0])
 const currentAction = computed<ActionConfig | undefined>(() => moduleConfigs[riskTargetModule.value || props.moduleKey]?.actions?.find((item) => item.key === riskAction.value))
 const riskActionLabel = computed(() => {
@@ -92,9 +133,12 @@ const permissionTreeRef = ref<{ getCheckedKeys: () => unknown[]; setCheckedKeys:
 const permissionActionLabels: Record<string, string> = {
   create: '新增', edit: '编辑', delete: '删除', toggle: '禁用/启用', 'reset-password': '重置默认密码',
   assign: '分配处理', reply: '回复用户', forward: '转发经销商', escalate: '转单到总部', complete: '标记完成',
-  approve: '审批通过', reject: '审批拒绝', ship: '填写发货', process: '流程处理',
+  approve: '业务确认通过', reject: '审批拒绝', ship: '物料发货', 'finance-confirm': '财务确认', 'purchase-ship': '仓库发货', 'confirm-receipt': '确认收货', 'complete-replacement': '登记更换', 'record-expense': '财务确认', process: '流程处理',
+  'confirm-transfer': '确认售后转移', 'approve-transfer-fee': '通过费用审批', 'reject-transfer-fee': '拒绝费用审批',
+  'approve-original': '审批通过', 'reject-original': '审批拒绝',
   publish: '发布/撤回', test: '测试查询', permissions: '配置权限', 'remote-disable': '远程禁用', 'remote-enable': '远程启用',
-  unbind: '强制解绑', 'change-region': '修改销售地区',
+  unbind: '强制解绑', 'change-region': '转移销售代理商',
+  export: '导出数据',
 }
 const permissionTree = navGroups.map((group, groupIndex) => ({
   id: `group-${groupIndex}`,
@@ -103,6 +147,7 @@ const permissionTree = navGroups.map((group, groupIndex) => ({
     const module = moduleConfigs[item.route]
     const actions = new Set<string>()
     if (module?.primaryLabel && !module.primaryLabel.includes('导出')) actions.add('create')
+    if (module?.exportable !== false) actions.add('export')
     for (const key of module?.rowActions || []) if (!['detail'].includes(key)) actions.add(key)
     for (const key of Object.values(module?.tabRowActions || {}).flat()) if (!['detail'].includes(key)) actions.add(key)
     return {
@@ -115,8 +160,44 @@ const permissionTree = navGroups.map((group, groupIndex) => ({
     }
   }),
 }))
-const validImportCount = computed(() => importRows.value.filter((item) => item.valid).length)
+const activeImportRows = computed(() => isMaterialImport.value ? materialImportRows.value : isOutboundImport.value ? outboundRows.value : importRows.value)
+const validImportCount = computed(() => activeImportRows.value.filter((item) => item.valid).length)
+const invalidImportCount = computed(() => activeImportRows.value.length - validImportCount.value)
+const canConfirmImport = computed(() => validImportCount.value > 0 && (!isOutboundImport.value || (!invalidImportCount.value && Boolean(outboundForm.targetDealerId))))
 const hasFilters = computed(() => Boolean(query.keyword || query.status || Object.values(filterValues).some((value) => Array.isArray(value) ? value.length : String(value ?? '').trim())))
+const hasRelationContext = computed(() => Object.values(relationFilters).some((value) => Array.isArray(value) ? value.length : Boolean(value)))
+const relationSourceTitle = computed(() => moduleConfigs[String(route.query.fromModule || '')]?.title || String(route.query.fromTitle || '关联页面'))
+const relationSourceLabel = computed(() => String(route.query.fromLabel || route.query.fromCode || '业务记录'))
+const relationDescription = computed(() => String(route.query.relationLabel || '关联数据'))
+const hasRelatedLinks = computed(() => Object.values(relatedLinks.value).some((items) => items.length > 0))
+const hasCategoryTree = computed(() => ['product-catalog', 'product-categories', 'material-catalog'].includes(props.moduleKey))
+type CategoryTreeNode = { id: string; label: string; itemCount: number; status: string; children: CategoryTreeNode[] }
+const categoryTreeData = computed<CategoryTreeNode[]>(() => {
+  const children = (parentId: string): CategoryTreeNode[] => categoryRecords.value
+    .filter((item) => String(item.parentId || '') === parentId)
+    .sort((left, right) => Number(left.status === 'disabled') - Number(right.status === 'disabled') || String(left.name).localeCompare(String(right.name), 'zh-CN'))
+    .map((item) => ({
+      id: item.id,
+      label: String(item.name),
+      itemCount: Number(props.moduleKey === 'material-catalog' ? item.materialCount : props.moduleKey === 'product-catalog' ? item.productCount : item.itemCount || 0),
+      status: String(item.status),
+      children: children(item.id),
+    }))
+  const roots = children('')
+  return [{
+    id: 'all',
+    label: '所有分类',
+    itemCount: roots.reduce((sum, item) => sum + item.itemCount, 0),
+    status: 'normal',
+    children: roots,
+  }]
+})
+const expandedCategoryIds = computed(() => ['all', ...categoryRecords.value.filter((item) => !item.parentId).map((item) => item.id)])
+const selectedCategoryLabel = computed(() => selectedCategoryId.value === 'all' ? '所有分类' : categoryRecords.value.find((item) => item.id === selectedCategoryId.value)?.path || '所有分类')
+const operationColumnWidth = computed(() => {
+  const actionSlots = activeRowActions.value.length > 3 ? 3 : activeRowActions.value.length
+  return Math.max(140, Math.min(460, actionSlots * 86 + (hasRelatedLinks.value ? 172 : 0)))
+})
 const pageStart = computed(() => total.value ? (query.pageNum - 1) * query.pageSize + 1 : 0)
 const pageEnd = computed(() => Math.min(total.value, query.pageNum * query.pageSize))
 
@@ -125,11 +206,34 @@ function emptyForm() {
   activeFields.value.forEach((field) => {
     if (field.type === 'switch') result[field.field] = false
     else if (field.type === 'multiSelect') result[field.field] = []
+    else if (field.type === 'lineItems') result[field.field] = [{ itemKey: '', quantity: 1, unitPrice: 0 }]
+    else if (field.type === 'componentItems') result[field.field] = [{ serialNumber: '', specification: '' }]
     else if (field.type === 'number') result[field.field] = 0
     else if (field.field === 'status') result[field.field] = field.options?.[0]?.value || 'normal'
     else result[field.field] = ''
   })
+  if (props.moduleKey === 'dealers') result.defaultWarrantyYears = auth.session?.domain === 'global' ? 1 : 2
   return result
+}
+
+type PurchaseLine = { itemKey: string; quantity: number; unitPrice: number }
+function purchaseLines(field: FieldConfig) {
+  const value = editorForm.value[field.field]
+  if (!Array.isArray(value)) editorForm.value[field.field] = []
+  return editorForm.value[field.field] as PurchaseLine[]
+}
+function addPurchaseLine(field: FieldConfig) { purchaseLines(field).push({ itemKey: '', quantity: 1, unitPrice: 0 }) }
+function removePurchaseLine(field: FieldConfig, index: number) { if (purchaseLines(field).length > 1) purchaseLines(field).splice(index, 1) }
+
+type DeviceComponentLine = { serialNumber: string; specification: string }
+function componentLines(field: FieldConfig) {
+  const value = editorForm.value[field.field]
+  if (!Array.isArray(value)) editorForm.value[field.field] = []
+  return editorForm.value[field.field] as DeviceComponentLine[]
+}
+function addComponentLine(field: FieldConfig) { componentLines(field).push({ serialNumber: '', specification: '' }) }
+function removeComponentLine(field: FieldConfig, index: number) {
+  if (componentLines(field).length > 1) componentLines(field).splice(index, 1)
 }
 
 function fieldOptions(field: Pick<FieldConfig, 'options' | 'optionSource'>) {
@@ -144,29 +248,113 @@ async function loadOptions(fields: Array<Pick<FieldConfig, 'optionSource'>>, con
   }))
 }
 
+function applyCategoryTreeFilter() {
+  if (!hasCategoryTree.value) return
+  if (selectedCategoryId.value !== 'all' && !categoryRecords.value.some((item) => item.id === selectedCategoryId.value)) selectedCategoryId.value = 'all'
+  const selectedPath = String(categoryRecords.value.find((entry) => entry.id === selectedCategoryId.value)?.path || '')
+  const ids = selectedCategoryId.value === 'all'
+    ? ''
+    : categoryRecords.value.filter((item) => item.path === selectedPath || String(item.path || '').startsWith(`${selectedPath} -> `)).map((item) => item.id)
+  if (props.moduleKey === 'product-catalog') filterValues.productCategoryId = ids
+  if (props.moduleKey === 'material-catalog') filterValues.productCategoryId = ids
+  if (props.moduleKey === 'product-categories') filterValues.id = ids
+}
+
+async function selectCategory(node: CategoryTreeNode) {
+  selectedCategoryId.value = node.id
+  applyCategoryTreeFilter()
+  query.pageNum = 1
+  await replaceListQuery()
+}
+
+function filterCategoryNode(value: string, data: CategoryTreeNode) {
+  return !value.trim() || data.label.toLocaleLowerCase('zh-CN').includes(value.trim().toLocaleLowerCase('zh-CN'))
+}
+
 async function load() {
   loading.value = true
   try {
-    await loadOptions(activeFilters.value)
+    if (hasCategoryTree.value) {
+      const categoryResponse = await mockService.productCategoryTreeRecords()
+      categoryRecords.value = categoryResponse.data
+      applyCategoryTreeFilter()
+    }
+    await loadOptions(activeFilters.value, filterValues)
     const response = await mockService.list(props.moduleKey, query)
     rows.value = response.rows
     total.value = response.total
+    const navigation = rows.value.length ? await mockService.relatedNavigation(props.moduleKey, rows.value.map((item) => item.id)) : null
+    relatedLinks.value = navigation?.code === 200 ? navigation.data : {}
     if (rows.value.length === 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await load()
+    }
+    const detailId = routeScalar(route.query.detail)
+    if (detailId && !detailOpen.value) {
+      const detail = await mockService.get(props.moduleKey, detailId)
+      if (detail.data) {
+        detailRecord.value = detail.data
+        detailTab.value = routeScalar(route.query.detailTab) || 'overview'
+        detailOpen.value = true
+      }
     }
   } finally {
     loading.value = false
   }
 }
 
+function routeScalar(value: unknown) {
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '')
+}
+
+function buildRouteQuery() {
+  const next: Record<string, string | string[] | undefined> = {
+    tab: query.tab,
+    keyword: query.keyword || undefined,
+    pageNum: query.pageNum > 1 ? String(query.pageNum) : undefined,
+    pageSize: query.pageSize !== preferences.pageSize ? String(query.pageSize) : undefined,
+    sort: query.orderByColumn || undefined,
+    dir: query.orderByColumn ? query.isAsc : undefined,
+    category: hasCategoryTree.value && selectedCategoryId.value !== 'all' ? selectedCategoryId.value : undefined,
+  }
+  for (const filter of activeFilters.value) {
+    if (filter.hidden) continue
+    const value = filterValues[filter.field]
+    if (Array.isArray(value) ? value.length : String(value ?? '').trim()) next[`f_${filter.field}`] = Array.isArray(value) ? value.map(String) : String(value)
+  }
+  for (const [field, value] of Object.entries(relationFilters)) if (Array.isArray(value) ? value.length : value) next[`rel_${field}`] = value
+  for (const key of ['fromModule', 'fromTitle', 'fromCode', 'fromLabel', 'relationLabel', 'returnTo']) {
+    const value = route.query[key]
+    if (value) next[key] = Array.isArray(value) ? value.map(String) : String(value)
+  }
+  return next
+}
+
 function applyRouteQuery() {
   Object.keys(filterValues).forEach((key) => { delete filterValues[key] })
+  Object.keys(relationFilters).forEach((key) => { delete relationFilters[key] })
+  selectedCategoryId.value = hasCategoryTree.value ? routeScalar(route.query.category) || 'all' : 'all'
   const requestedTab = String(route.query.tab || config.value.tabs[0]?.key || 'all')
   query.tab = config.value.tabs.some((item) => item.key === requestedTab) ? requestedTab : (config.value.tabs[0]?.key || 'all')
-  activeFilters.value.forEach((filter) => { filterValues[filter.field] = '' })
+  activeFilters.value.forEach((filter) => {
+    const value = route.query[`f_${filter.field}`]
+    filterValues[filter.field] = value === undefined ? '' : Array.isArray(value) ? value.map(String) : filter.type === 'dateRange' ? [String(value)] : routeScalar(value)
+  })
+  for (const [key, value] of Object.entries(route.query)) {
+    if (!key.startsWith('rel_') || value === undefined || value === null) continue
+    relationFilters[key.slice(4)] = Array.isArray(value) ? value.map(String) : String(value)
+  }
   query.keyword = String(route.query.keyword || '')
-  query.pageNum = 1
+  query.pageNum = Math.max(1, Number(route.query.pageNum || 1) || 1)
+  query.pageSize = [10, 20, 50].includes(Number(route.query.pageSize)) ? Number(route.query.pageSize) : preferences.pageSize
+  query.orderByColumn = routeScalar(route.query.sort)
+  query.isAsc = route.query.dir === 'asc' ? 'asc' : 'desc'
+}
+
+async function replaceListQuery(next = buildRouteQuery()) {
+  const previous = route.fullPath
+  await router.replace({ query: next })
+  if (route.fullPath === previous) await load()
 }
 
 async function changeTab(tab: string | number) {
@@ -174,31 +362,100 @@ async function changeTab(tab: string | number) {
   query.pageNum = 1
   Object.keys(filterValues).forEach((key) => { delete filterValues[key] })
   activeFilters.value.forEach((filter) => { filterValues[filter.field] = '' })
-  await router.replace({ query: { ...route.query, tab: query.tab, keyword: query.keyword || undefined } })
-  await load()
+  await replaceListQuery()
 }
 
-function search() {
+async function search() {
   query.pageNum = 1
-  router.replace({ query: { ...route.query, tab: query.tab, keyword: query.keyword || undefined } })
-  load()
+  await replaceListQuery()
 }
 
-function resetFilters() {
+async function changeFilter(field: string) {
+  if (props.moduleKey === 'warehouse' && query.tab === 'stock' && field === 'deviceType') filterValues.deviceModel = ''
+  await loadOptions(activeFilters.value, filterValues)
+  await search()
+}
+
+async function resetFilters() {
   query.keyword = ''
   query.status = ''
   Object.keys(filterValues).forEach((key) => { filterValues[key] = '' })
   query.orderByColumn = ''
   query.isAsc = 'desc'
   query.pageNum = 1
-  router.replace({ query: { tab: query.tab } })
-  load()
+  selectedCategoryId.value = 'all'
+  await replaceListQuery()
 }
 
-function changeSort({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
+function onEditorFieldInput(field: FieldConfig) {
+  if (props.moduleKey === 'product-categories' && field.field === 'name') void refreshDerivedFields(field.field)
+}
+
+async function changeSort({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
   query.orderByColumn = order ? prop : ''
   query.isAsc = order === 'ascending' ? 'asc' : 'desc'
-  load()
+  query.pageNum = 1
+  await replaceListQuery()
+}
+
+async function changePage() {
+  await replaceListQuery()
+}
+
+function primaryRelated(record: EntityRecord) {
+  return relatedLinks.value[record.id]?.find((item) => item.level === 'primary')
+}
+
+function secondaryRelated(record: EntityRecord) {
+  return (relatedLinks.value[record.id] || []).filter((item) => item !== primaryRelated(record))
+}
+
+async function navigateRelated(item: RelatedNavigationItem, record: EntityRecord) {
+  const returnQuery = { ...route.query }
+  if (detailOpen.value && detailRecord.value) {
+    returnQuery.detail = detailRecord.value.id
+    returnQuery.detailTab = detailTab.value
+  }
+  const returnTo = router.resolve({ name: props.moduleKey, query: returnQuery }).fullPath
+  detailOpen.value = false
+  const targetQuery: Record<string, string | string[]> = {
+    tab: item.targetTab || moduleConfigs[item.targetModule]?.tabs[0]?.key || 'all',
+    fromModule: props.moduleKey,
+    fromTitle: config.value.title,
+    fromCode: record.code,
+    fromLabel: record.name,
+    relationLabel: item.label,
+    returnTo,
+  }
+  for (const [field, value] of Object.entries(item.relationFilters)) targetQuery[`rel_${field}`] = value
+  await router.push({ name: item.targetModule, query: targetQuery })
+}
+
+async function clearDetailRouteState() {
+  if (!route.query.detail && !route.query.detailTab) return
+  const next = { ...route.query }
+  delete next.detail
+  delete next.detailTab
+  await router.replace({ query: next })
+}
+
+async function navigateRelatedByKey(record: EntityRecord, key: string) {
+  const item = relatedLinks.value[record.id]?.find((link) => link.key === key)
+  if (item) await navigateRelated(item, record)
+}
+
+async function clearRelationContext() {
+  Object.keys(relationFilters).forEach((key) => { delete relationFilters[key] })
+  query.pageNum = 1
+  const next = buildRouteQuery()
+  for (const key of ['fromModule', 'fromTitle', 'fromCode', 'fromLabel', 'relationLabel', 'returnTo']) delete next[key]
+  await replaceListQuery(next)
+}
+
+async function returnToSource() {
+  const returnTo = routeScalar(route.query.returnTo)
+  if (returnTo.startsWith('/')) await router.push(returnTo)
+  else if (route.query.fromModule) await router.push({ name: String(route.query.fromModule) })
 }
 
 async function primaryAction() {
@@ -206,11 +463,12 @@ async function primaryAction() {
   if (!activePrimaryLabel.value) return
   await openEditor()
   if (props.moduleKey === 'warehouse') {
-    editorForm.value.category = query.tab === 'stock' ? '在库' : query.tab === 'outbound' ? '出库' : '调货'
-    editorForm.value.status = query.tab === 'stock' ? 'normal' : 'pending'
+    editorForm.value.category = query.tab === 'stock' ? '在库' : query.tab === 'materialStock' ? '物料入库' : query.tab === 'outbound' ? '出库' : '调货'
+    editorForm.value.status = ['stock', 'materialStock'].includes(query.tab) ? 'normal' : 'pending'
   }
   const tab = currentTab.value
   if (tab?.field && tab.value) editorForm.value[tab.field] = tab.value
+  if (props.moduleKey === 'materials' && !editorForm.value.category) editorForm.value.category = '售后物料申请'
   await refreshDerivedFields()
 }
 
@@ -219,13 +477,30 @@ async function openEditor(record?: EntityRecord) {
   if (record) {
     const response = await mockService.get(props.moduleKey, record.id)
     editorForm.value = response.data ? { ...response.data } : { ...record }
+    if (['projects', 'warehouse'].includes(props.moduleKey)) {
+      const resolved = await mockService.resolveFields(props.moduleKey, editorForm.value)
+      editorForm.value = { ...resolved.data }
+    }
   } else editorForm.value = emptyForm()
   await loadOptions(activeFields.value, editorForm.value)
   editorOpen.value = true
   nextTick(() => editorRef.value?.clearValidate())
 }
 
-async function refreshDerivedFields() {
+async function refreshDerivedFields(changedField = '') {
+  if (['projects', 'warehouse'].includes(props.moduleKey) && changedField === 'deviceType') {
+    editorForm.value.deviceModel = ''
+    editorForm.value.deviceSN = ''
+    editorForm.value.deviceName = ''
+    editorForm.value.specification = ''
+  }
+  if (['projects', 'warehouse'].includes(props.moduleKey) && changedField === 'deviceModel') {
+    editorForm.value.deviceSN = ''
+    if (props.moduleKey === 'projects') {
+      editorForm.value.deviceName = ''
+      editorForm.value.specification = ''
+    }
+  }
   const response = await mockService.resolveFields(props.moduleKey, editorForm.value)
   editorForm.value = { ...response.data }
   await loadOptions(activeFields.value, editorForm.value)
@@ -241,6 +516,9 @@ async function saveEditor() {
       const secret = String(payload[field.field] || '')
       if (secret) payload[`${field.field}Masked`] = `********${secret.slice(-4)}`
       delete payload[field.field]
+    }
+    if (Array.isArray(payload.components)) {
+      payload.components = (payload.components as DeviceComponentLine[]).filter((item) => item.serialNumber.trim() || item.specification.trim())
     }
     if (props.moduleKey === 'warehouse' && Array.isArray(payload.selectedDevices)) payload.deviceSN = payload.selectedDevices.join('、')
     const response = editorMode.value === 'create'
@@ -275,10 +553,22 @@ async function runRowAction(action: string, record: EntityRecord, targetModule =
   riskRecord.value = record
   riskAction.value = action
   riskTargetModule.value = targetModule
-  actionForm.value = Object.fromEntries((moduleConfigs[targetModule]?.actions?.find((item) => item.key === action)?.fields || []).map((field) => [field.field, field.type === 'number' ? 0 : field.type === 'switch' ? false : '']))
-  await loadOptions(currentAction.value?.fields || [], { recordId: record.id, moduleKey: targetModule })
+  actionForm.value = Object.fromEntries((moduleConfigs[targetModule]?.actions?.find((item) => item.key === action)?.fields || []).map((field) => [field.field, field.type === 'number' ? 0 : field.type === 'switch' ? false : field.type === 'multiSelect' ? [] : record[field.field] ?? '']))
+  if (targetModule === 'devices' && action === 'change-region') {
+    actionForm.value.currentDealer = record.owner
+    actionForm.value.currentRegion = record.region
+  }
+  await refreshRiskFields()
   riskOpen.value = true
   if (action === 'permissions') nextTick(() => permissionTreeRef.value?.setCheckedKeys(Array.isArray(record.permissions) ? record.permissions : []))
+}
+
+async function refreshRiskFields() {
+  if (!riskRecord.value) return
+  const moduleKey = riskTargetModule.value || props.moduleKey
+  const response = await mockService.resolveFields(moduleKey, { ...riskRecord.value, ...actionForm.value })
+  actionForm.value = { ...actionForm.value, ...response.data }
+  await loadOptions(currentAction.value?.fields || [], { ...riskRecord.value, ...actionForm.value, recordId: riskRecord.value.id, moduleKey })
 }
 
 function runRelatedAction(payload: { moduleKey: string; action: string; record: EntityRecord }) {
@@ -293,9 +583,27 @@ function canRunAction(action: string, record: EntityRecord) {
   return statusAllowed && mockService.canAction(props.moduleKey, record, action).allowed
 }
 
+function availableRowActions(record: EntityRecord) {
+  return activeRowActions.value.filter((action) => canRunAction(action, record))
+}
+
+function inlineRowActions(record: EntityRecord) {
+  const actions = availableRowActions(record)
+  return actions.length > 3 ? actions.slice(0, 2) : actions
+}
+
+function overflowRowActions(record: EntityRecord) {
+  const actions = availableRowActions(record)
+  return actions.length > 3 ? actions.slice(2) : []
+}
+
 async function confirmRisk() {
   if (!riskRecord.value) return
-  const requiredField = currentAction.value?.fields?.find((field) => field.required && !String(actionForm.value[field.field] ?? '').trim())
+  const requiredField = currentAction.value?.fields?.find((field) => {
+    if (!field.required) return false
+    const value = actionForm.value[field.field]
+    return Array.isArray(value) ? value.length === 0 : !String(value ?? '').trim()
+  })
   if (requiredField) {
     ElMessage.warning(`请填写${requiredField.label}`)
     return
@@ -325,9 +633,13 @@ async function confirmRisk() {
 }
 
 async function exportAll() {
-  const response = await mockService.all(props.moduleKey)
-  await exportRecords(config.value.title, response.data)
-  ElMessage.success(`已导出 ${response.data.length} 条记录`)
+  const response = await mockService.exportRows(props.moduleKey, query)
+  if (response.code !== 200) {
+    ElMessage.error(response.msg)
+    return
+  }
+  await exportRecords(`${config.value.title}-${currentTab.value.label}`, response.data, activeColumns.value)
+  ElMessage.success(`已导出 ${response.data.length} 条当前筛选记录`)
 }
 
 async function onBannerFile(upload: UploadFile) {
@@ -354,6 +666,32 @@ function onFirmwareFile(upload: UploadFile) {
   editorForm.value.firmwareFile = `${upload.raw.name} · ${(upload.raw.size / 1024 / 1024).toFixed(2)} MB · 校验通过`
 }
 
+async function onPdfFile(upload: UploadFile) {
+  if (!upload.raw) return
+  if (upload.raw.type !== 'application/pdf' && !upload.raw.name.toLowerCase().endsWith('.pdf')) {
+    ElMessage.error('常见问题文件仅支持 PDF')
+    return
+  }
+  if (upload.raw.size > 4 * 1024 * 1024) {
+    ElMessage.error('PDF 文件不能超过 4 MB')
+    return
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('PDF 文件读取失败'))
+    reader.readAsDataURL(upload.raw!)
+  }).catch((error) => {
+    ElMessage.error(error instanceof Error ? error.message : 'PDF 文件读取失败')
+    return ''
+  })
+  if (!dataUrl) return
+  editorForm.value.pdfFile = upload.raw.name
+  editorForm.value.fileName = upload.raw.name
+  editorForm.value.pdfData = dataUrl
+  ElMessage.success('PDF 文件已读取，可保存发布')
+}
+
 async function onImportFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -361,10 +699,28 @@ async function onImportFile(event: Event) {
   importBusy.value = true
   importName.value = file.name
   try {
-    const existing = (await mockService.all('devices')).data.map((item) => item.code)
-    importRows.value = await parseDeviceFile(file, existing)
+    if (isOutboundImport.value) {
+      importRows.value = []
+      materialImportRows.value = []
+      const available = (await mockService.all('devices')).data.filter((item) => item.inventoryStatus === 'in_stock' && item.ownerId === 'platform')
+      outboundRows.value = await parseOutboundFile(file, available)
+    } else if (isMaterialImport.value) {
+      importRows.value = []
+      outboundRows.value = []
+      const existing = (await mockService.all('material-catalog')).data.flatMap((item) => [String(item.code), String(item.materialCode || '')]).filter(Boolean)
+      materialImportRows.value = await parseMaterialFile(file, existing)
+    } else {
+      outboundRows.value = []
+      materialImportRows.value = []
+      const devices = (await mockService.all('devices')).data
+      const existing = devices.map((item) => item.code)
+      const existingComponentSerials = devices.flatMap((item) => Array.isArray(item.components) ? item.components.map((component) => String((component as DeviceComponentLine).serialNumber || '')) : []).filter(Boolean)
+      importRows.value = await parseDeviceFile(file, existing, existingComponentSerials)
+    }
   } catch (error) {
     importRows.value = []
+    outboundRows.value = []
+    materialImportRows.value = []
     ElMessage.error(error instanceof Error ? error.message : '文件解析失败')
   } finally {
     importBusy.value = false
@@ -373,15 +729,25 @@ async function onImportFile(event: Event) {
 }
 
 async function confirmImport() {
-  const validRows = importRows.value.filter((item) => item.valid)
+  const validRows = activeImportRows.value.filter((item) => item.valid)
   if (!validRows.length) return ElMessage.warning('没有可导入的数据')
+  if (isOutboundImport.value && invalidImportCount.value) return ElMessage.warning('请修正表格中的错误行后重新上传')
+  if (isOutboundImport.value && !outboundForm.targetDealerId) return ElMessage.warning('请选择接收经销商')
   importBusy.value = true
   try {
-    const response = await mockService.importDevices(validRows, props.moduleKey === 'warehouse' ? 'warehouse' : 'devices')
+    const response = isOutboundImport.value
+      ? await mockService.create('warehouse', {
+          category: '出库',
+          selectedDevices: (validRows as DeviceOutboundRow[]).map((item) => item.sn),
+          targetDealerId: outboundForm.targetDealerId,
+          summary: outboundForm.summary || `通过表格创建 ${validRows.length} 台设备出库单`,
+        })
+      : isMaterialImport.value
+        ? await mockService.importMaterials(validRows as MaterialImportRow[])
+        : await mockService.importDevices(validRows as DeviceImportRow[])
     if (response.code !== 200) throw new Error(response.msg)
-    ElMessage.success(response.msg)
+    ElMessage.success(isOutboundImport.value ? `已创建包含 ${validRows.length} 台设备的待确认出库单` : response.msg)
     importOpen.value = false
-    importRows.value = []
     await load()
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '导入失败')
@@ -390,9 +756,29 @@ async function confirmImport() {
   }
 }
 
+async function openImportDialog() {
+  importRows.value = []
+  outboundRows.value = []
+  materialImportRows.value = []
+  importName.value = ''
+  outboundForm.targetDealerId = ''
+  outboundForm.summary = ''
+  if (isOutboundImport.value) await loadOptions([{ optionSource: 'dealers' }])
+  importOpen.value = true
+}
+
+function resetImportDialog() {
+  importRows.value = []
+  outboundRows.value = []
+  materialImportRows.value = []
+  importName.value = ''
+  outboundForm.targetDealerId = ''
+  outboundForm.summary = ''
+}
+
 function fieldRules(field: FieldConfig) {
   const required = field.required || (editorMode.value === 'create' && field.requiredOnCreate)
-  return required ? [{ required: true, message: `请填写${field.label}`, trigger: ['select', 'multiSelect'].includes(field.type) ? 'change' : 'blur' }] : []
+  return required ? [{ required: true, message: `请填写${field.label}`, trigger: ['select', 'multiSelect', 'lineItems', 'componentItems'].includes(field.type) ? 'change' : 'blur' }] : []
 }
 
 function displayValue(value: unknown) {
@@ -469,15 +855,9 @@ function savePrototypeAction() {
   ElMessage.success(`${prototypeTitle.value}已完成（本地模拟）`)
 }
 
-watch(() => props.moduleKey, async () => { applyRouteQuery(); await load() })
-watch(() => route.query.tab, async (value) => {
-  const requestedTab = String(value || config.value.tabs[0]?.key || 'all')
-  if (requestedTab === query.tab) return
-  applyRouteQuery()
-  await load()
-})
-watch(() => route.query.keyword, (value) => { if (String(value || '') !== query.keyword) { query.keyword = String(value || ''); search() } })
+watch(() => [props.moduleKey, route.fullPath], async () => { applyRouteQuery(); await load() })
 watch(() => query.pageSize, (value) => preferences.setPageSize(value))
+watch(categoryKeyword, (value) => categoryTreeRef.value?.filter(value))
 
 onMounted(() => {
   applyRouteQuery()
@@ -496,96 +876,160 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
         <p>{{ config.description }}</p>
       </div>
       <div class="heading-actions">
-        <el-button v-if="canBatchImport" @click="importOpen = true"><AppIcon name="file-spreadsheet" :size="16" />{{ moduleKey === 'warehouse' ? '批量入库' : '批量导入' }}</el-button>
+        <el-button v-if="canBatchImport" @click="openImportDialog"><AppIcon name="file-spreadsheet" :size="16" />{{ batchImportLabel }}</el-button>
         <el-button v-if="activePrimaryLabel && canCreate" type="primary" @click="primaryAction"><AppIcon :name="activePrimaryLabel.includes('导出') ? 'download' : 'plus'" :size="16" />{{ activePrimaryLabel }}</el-button>
       </div>
     </header>
 
-    <div class="page-panel data-panel">
-      <el-tabs :model-value="query.tab" class="module-tabs" @tab-change="changeTab">
-        <el-tab-pane v-for="tab in config.tabs" :key="tab.key" :name="tab.key">
-          <template #label><span>{{ tab.label }}</span></template>
-        </el-tab-pane>
-      </el-tabs>
-
-      <form class="filter-bar domain-filter-bar" @submit.prevent="search">
-        <label v-for="filter in activeFilters" :key="filter.field" class="filter-field">
-          <span class="filter-label">{{ filter.label }}</span>
-          <el-input v-if="filter.type === 'text'" v-model="filterValues[filter.field]" clearable :aria-label="filter.label" :placeholder="filter.placeholder || `请输入${filter.label}`" class="filter-search domain-filter-control">
-            <template #prefix><AppIcon name="search" :size="16" /></template>
-          </el-input>
-          <el-select v-else-if="filter.type === 'select'" v-model="filterValues[filter.field]" clearable :placeholder="`全部${filter.label}`" class="domain-filter-control" @change="search">
-            <el-option v-for="option in fieldOptions(filter)" :key="option.value" :label="option.label" :value="option.value" />
-          </el-select>
-          <el-date-picker v-else v-model="filterValues[filter.field]" type="daterange" unlink-panels range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="domain-date-filter" @change="search" />
-        </label>
-        <div class="filter-actions"><el-button @click="resetFilters">重置</el-button><el-button native-type="submit" type="primary"><AppIcon name="search" :size="16" />查询</el-button></div>
-      </form>
-
-      <div class="table-toolbar">
-        <div><strong>数据列表</strong><span>{{ currentTab.label }} · 共 {{ total }} 条</span><span v-if="selected.length" class="selected-count">已选择 {{ selected.length }} 条</span></div>
-        <div>
-          <el-button text title="刷新" @click="load"><AppIcon name="refresh-cw" :size="16" /></el-button>
-          <el-button text title="导出当前模块" @click="exportAll"><AppIcon name="download" :size="16" /></el-button>
-        </div>
+    <div v-if="hasRelationContext" class="relation-context-bar">
+      <div class="relation-context-main">
+        <span class="relation-context-icon"><AppIcon name="arrow-left-right" :size="18" /></span>
+        <div><strong>来自{{ relationSourceTitle }} · {{ relationSourceLabel }}</strong><p>{{ relationDescription }}，当前匹配 {{ total }} 条数据。</p></div>
       </div>
+      <div class="relation-context-actions"><el-button v-if="route.query.returnTo || route.query.fromModule" @click="returnToSource"><AppIcon name="chevron-left" :size="16" />返回来源</el-button><el-button @click="clearRelationContext">清除关联条件</el-button></div>
+    </div>
 
-      <el-table v-loading="loading" :data="rows" row-key="id" class="business-table" @selection-change="selected = $event" @sort-change="changeSort">
-        <el-table-column type="selection" width="48" />
-        <el-table-column v-for="column in activeColumns" :key="column.field" :prop="column.field" :label="column.label" :width="columnWidth(column)" :min-width="columnMinWidth(column)" sortable="custom" show-overflow-tooltip>
-          <template #default="scope">
-            <div v-if="column.type === 'main'" class="main-cell"><strong>{{ displayColumn(column, scope.row) }}</strong><small>{{ scope.row.code }}</small></div>
-            <code v-else-if="column.type === 'mono'" class="mono-cell">{{ displayColumn(column, scope.row) }}</code>
-            <span v-else-if="column.type === 'status'" class="status-chip" :data-tone="statusMeta(scope.row[column.field]).tone"><i></i>{{ statusMeta(scope.row[column.field]).label }}</span>
-            <span v-else-if="column.type === 'money'" class="money-cell">¥{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
-            <span v-else-if="column.type === 'number'">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
-            <el-button v-else-if="column.type === 'link'" link type="primary" @click="openDetailTab(scope.row, 'devices')">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</el-button>
-            <img v-else-if="column.type === 'image'" class="table-image" :src="String(scope.row[column.field] || '/assets/backgrounds/banner-maintenance.png')" alt="Banner">
-            <span v-else>{{ displayColumn(column, scope.row) }}</span>
+    <div class="page-panel data-panel" :class="{ 'category-workbench': hasCategoryTree }">
+      <aside v-if="hasCategoryTree" class="category-sidebar" aria-label="产品分类树">
+        <div class="category-sidebar-heading">
+          <div><span>产品分类</span><small>{{ categoryRecords.length }} 个分类</small></div>
+          <el-button v-if="moduleKey === 'product-categories' && canCreate" text title="新增产品分类" @click="primaryAction"><AppIcon name="plus" :size="16" /></el-button>
+        </div>
+        <el-input v-model="categoryKeyword" clearable aria-label="搜索产品分类" placeholder="搜索分类">
+          <template #prefix><AppIcon name="search" :size="15" /></template>
+        </el-input>
+        <el-tree
+          ref="categoryTreeRef"
+          class="category-tree"
+          node-key="id"
+          :data="categoryTreeData"
+          :props="{ label: 'label', children: 'children' }"
+          :default-expanded-keys="expandedCategoryIds"
+          :current-node-key="selectedCategoryId"
+          :filter-node-method="filterCategoryNode"
+          highlight-current
+          @node-click="selectCategory"
+        >
+          <template #default="{ data }">
+            <span class="category-tree-node" :class="{ disabled: data.status === 'disabled' }">
+              <span>{{ data.label }}</span><small>{{ data.itemCount }}</small>
+            </span>
           </template>
-        </el-table-column>
-        <el-table-column v-if="activeRowActions.length" label="操作" fixed="right" :width="Math.max(130, Math.min(420, activeRowActions.length * 86))">
-          <template #default="scope"><div class="row-actions"><el-button v-for="action in activeRowActions.filter((item) => canRunAction(item, scope.row))" :key="action" link :type="['delete', 'remote-disable', 'unbind', 'reject', 'escalate'].includes(action) ? 'danger' : 'primary'" @click="runRowAction(action, scope.row)">{{ rowActionLabel(action, scope.row) }}</el-button></div></template>
-        </el-table-column>
-        <template #empty><div class="empty-state"><AppIcon name="inbox" :size="34" /><strong>{{ hasFilters ? '没有匹配的结果' : '暂无数据' }}</strong><p>{{ hasFilters ? '请调整筛选条件后重试。' : '当前数据域下还没有记录。' }}</p><el-button v-if="hasFilters" @click="resetFilters">清除筛选</el-button></div></template>
-      </el-table>
+        </el-tree>
+      </aside>
 
-      <footer class="pagination-bar">
-        <span>显示 {{ pageStart }}-{{ pageEnd }} 条，共 {{ total }} 条</span>
-        <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" layout="sizes, prev, pager, next" :page-sizes="[10, 20, 50]" :total="total" @change="load" />
-      </footer>
+      <div class="category-workbench-main">
+        <el-tabs :model-value="query.tab" class="module-tabs" @tab-change="changeTab">
+          <el-tab-pane v-for="tab in config.tabs" :key="tab.key" :name="tab.key">
+            <template #label><span>{{ tab.label }}</span></template>
+          </el-tab-pane>
+        </el-tabs>
+
+        <form class="filter-bar domain-filter-bar" @submit.prevent="search">
+          <label v-for="filter in visibleFilters" :key="filter.field" class="filter-field">
+            <span class="filter-label">{{ filter.label }}</span>
+            <el-input v-if="filter.type === 'text'" v-model="filterValues[filter.field]" clearable :aria-label="filter.label" :placeholder="filter.placeholder || `请输入${filter.label}`" class="filter-search domain-filter-control">
+              <template #prefix><AppIcon name="search" :size="16" /></template>
+            </el-input>
+            <el-select v-else-if="filter.type === 'select'" v-model="filterValues[filter.field]" clearable :filterable="Boolean(filter.optionSource)" :placeholder="`全部${filter.label}`" class="domain-filter-control" @change="changeFilter(filter.field)">
+              <el-option v-for="option in fieldOptions(filter)" :key="option.value" :label="option.label" :value="option.value" />
+            </el-select>
+            <el-date-picker v-else v-model="filterValues[filter.field]" type="daterange" unlink-panels range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="domain-date-filter" @change="search" />
+          </label>
+          <div class="filter-actions"><el-button @click="resetFilters">重置</el-button><el-button native-type="submit" type="primary"><AppIcon name="search" :size="16" />查询</el-button></div>
+        </form>
+
+        <div class="table-toolbar">
+          <div><strong>数据列表</strong><span v-if="hasCategoryTree">{{ selectedCategoryLabel }}</span><span>{{ currentTab.label }} · 共 {{ total }} 条</span><span v-if="selected.length" class="selected-count">已选择 {{ selected.length }} 条</span></div>
+          <div>
+            <el-button text title="刷新" @click="load"><AppIcon name="refresh-cw" :size="16" /></el-button>
+            <el-button v-if="canExport" text title="导出当前筛选结果" @click="exportAll"><AppIcon name="download" :size="16" /></el-button>
+          </div>
+        </div>
+
+        <el-table v-loading="loading" :data="rows" row-key="id" class="business-table" @selection-change="selected = $event" @sort-change="changeSort">
+          <el-table-column type="selection" width="48" />
+          <el-table-column v-for="column in activeColumns" :key="column.field" :prop="column.field" :label="column.label" :width="columnWidth(column)" :min-width="columnMinWidth(column)" sortable="custom" show-overflow-tooltip>
+            <template #default="scope">
+              <div v-if="column.type === 'main'" class="main-cell"><strong>{{ displayColumn(column, scope.row) }}</strong><small>{{ scope.row.code }}</small></div>
+              <code v-else-if="column.type === 'mono'" class="mono-cell">{{ displayColumn(column, scope.row) }}</code>
+              <span v-else-if="column.type === 'status'" class="status-chip" :data-tone="statusMeta(scope.row[column.field]).tone"><i></i>{{ statusMeta(scope.row[column.field]).label }}</span>
+              <span v-else-if="column.type === 'money'" class="money-cell">¥{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
+              <span v-else-if="column.type === 'number'">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</span>
+              <el-button v-else-if="column.type === 'link'" link type="primary" @click="openDetailTab(scope.row, 'devices')">{{ Number(scope.row[column.field] || 0).toLocaleString() }}</el-button>
+              <img v-else-if="column.type === 'image'" class="table-image" :src="String(scope.row[column.field] || './assets/backgrounds/banner-maintenance.png')" alt="Banner">
+              <span v-else>{{ displayColumn(column, scope.row) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="activeRowActions.length || hasRelatedLinks" label="操作" fixed="right" :width="operationColumnWidth">
+            <template #default="scope">
+              <div class="row-actions">
+                <el-button v-for="action in inlineRowActions(scope.row)" :key="action" link :type="['delete', 'remote-disable', 'unbind', 'reject', 'reject-transfer-fee', 'escalate'].includes(action) ? 'danger' : 'primary'" @click="runRowAction(action, scope.row)">{{ rowActionLabel(action, scope.row) }}</el-button>
+                <el-dropdown v-if="overflowRowActions(scope.row).length" trigger="click" @command="(action: string) => runRowAction(action, scope.row)">
+                  <el-button link type="primary" class="related-menu-trigger">更多操作<AppIcon name="chevron-down" :size="14" /></el-button>
+                  <template #dropdown><el-dropdown-menu><el-dropdown-item v-for="action in overflowRowActions(scope.row)" :key="action" :command="action" :class="{ 'danger-menu-item': ['delete', 'remote-disable', 'unbind', 'reject', 'reject-transfer-fee', 'escalate'].includes(action) }">{{ rowActionLabel(action, scope.row) }}</el-dropdown-item></el-dropdown-menu></template>
+                </el-dropdown>
+                <el-button v-if="primaryRelated(scope.row)" link type="primary" class="related-primary-action" @click="navigateRelated(primaryRelated(scope.row)!, scope.row)">{{ primaryRelated(scope.row)!.label }}</el-button>
+                <el-dropdown v-if="secondaryRelated(scope.row).length" trigger="click" @command="(key: string) => navigateRelatedByKey(scope.row, key)">
+                  <el-button link type="primary" class="related-menu-trigger">关联数据<AppIcon name="chevron-down" :size="14" /></el-button>
+                  <template #dropdown><el-dropdown-menu class="related-data-menu"><el-dropdown-item v-for="item in secondaryRelated(scope.row)" :key="item.key" :command="item.key"><AppIcon :name="item.icon" :size="16" /><span>{{ item.label }}</span><small>{{ item.count }}</small></el-dropdown-item></el-dropdown-menu></template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+          <template #empty><div class="empty-state"><AppIcon name="inbox" :size="34" /><strong>{{ hasRelationContext ? '关联数据已发生变化或当前无权查看' : hasFilters ? '没有匹配的结果' : '暂无数据' }}</strong><p>{{ hasRelationContext ? '可返回来源页面核对业务记录，或清除关联条件查看全部数据。' : hasFilters ? '请调整筛选条件后重试。' : '当前数据域下还没有记录。' }}</p><el-button v-if="hasRelationContext" @click="clearRelationContext">清除关联条件</el-button><el-button v-else-if="hasFilters" @click="resetFilters">清除筛选</el-button></div></template>
+        </el-table>
+
+        <footer class="pagination-bar">
+          <span>显示 {{ pageStart }}-{{ pageEnd }} 条，共 {{ total }} 条</span>
+          <el-pagination v-model:current-page="query.pageNum" v-model:page-size="query.pageSize" layout="sizes, prev, pager, next" :page-sizes="[10, 20, 50]" :total="total" @change="changePage" />
+        </footer>
+      </div>
     </div>
 
     <el-dialog v-model="editorOpen" :title="editorMode === 'create' ? activePrimaryLabel || `新增${config.title}` : `编辑${config.title}`" width="760px" align-center append-to-body destroy-on-close class="entity-dialog">
       <el-form ref="editorRef" :model="editorForm" label-position="top" class="entity-form">
-        <el-form-item v-for="field in activeFields" :key="field.field" :label="field.label" :prop="field.field" :rules="fieldRules(field)" :class="{ 'span-two': field.span === 2 }">
-          <el-input v-if="field.type === 'text'" v-model="editorForm[field.field]" :placeholder="field.placeholder || `请输入${field.label}`" :disabled="field.readonly" @blur="refreshDerivedFields" />
+        <el-form-item v-for="field in editorFields" :key="field.field" :label="field.label" :prop="field.field" :rules="fieldRules(field)" :class="{ 'span-two': field.span === 2 }">
+          <el-input v-if="field.type === 'text'" v-model="editorForm[field.field]" :placeholder="field.placeholder || `请输入${field.label}`" :disabled="field.readonly" @input="onEditorFieldInput(field)" />
           <el-input v-else-if="field.type === 'password'" v-model="editorForm[field.field]" type="password" show-password :placeholder="`请输入${field.label}`" autocomplete="new-password" />
           <el-input v-else-if="field.type === 'textarea'" v-model="editorForm[field.field]" type="textarea" :rows="4" maxlength="300" show-word-limit />
-          <el-select v-else-if="field.type === 'select'" v-model="editorForm[field.field]" :disabled="field.readonly" placeholder="请选择" style="width: 100%" @change="refreshDerivedFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
-          <el-select v-else-if="field.type === 'multiSelect'" v-model="editorForm[field.field]" :disabled="field.readonly" multiple collapse-tags collapse-tags-tooltip placeholder="请选择" style="width: 100%" @change="refreshDerivedFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'select'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" placeholder="请选择" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'multiSelect'" v-model="editorForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" multiple collapse-tags collapse-tags-tooltip placeholder="请选择" style="width: 100%" @change="refreshDerivedFields(field.field)"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <div v-else-if="field.type === 'lineItems'" class="line-items-editor">
+            <div v-for="(line, index) in purchaseLines(field)" :key="index" class="line-item-row"><el-select v-model="line.itemKey" filterable placeholder="选择设备或物料" @change="refreshDerivedFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select><el-input-number v-model="line.quantity" :min="1" controls-position="right" aria-label="数量" @change="refreshDerivedFields" /><el-input-number v-model="line.unitPrice" :min="0.01" :precision="2" controls-position="right" aria-label="参考单价" @change="refreshDerivedFields" /><el-button title="删除明细" :disabled="purchaseLines(field).length === 1" @click="removePurchaseLine(field, index)"><AppIcon name="trash-2" :size="16" /></el-button></div>
+            <el-button @click="addPurchaseLine(field)"><AppIcon name="plus" :size="16" />添加采购明细</el-button>
+          </div>
+          <div v-else-if="field.type === 'componentItems'" class="component-items-editor">
+            <div v-for="(component, index) in componentLines(field)" :key="index" class="component-item-row">
+              <el-input v-model="component.serialNumber" placeholder="子物料序列号" />
+              <el-input v-model="component.specification" placeholder="规格/型号" />
+              <el-button title="删除子物料" :disabled="componentLines(field).length === 1" @click="removeComponentLine(field, index)"><AppIcon name="trash-2" :size="16" /></el-button>
+            </div>
+            <el-button @click="addComponentLine(field)"><AppIcon name="plus" :size="16" />添加子物料</el-button>
+          </div>
           <el-date-picker v-else-if="field.type === 'date'" v-model="editorForm[field.field]" :disabled="field.readonly" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
-          <el-input-number v-else-if="field.type === 'number'" v-model="editorForm[field.field]" :disabled="field.readonly" :min="field.min ?? 0" :max="field.max" controls-position="right" style="width: 100%" />
+          <el-input-number v-else-if="field.type === 'number'" v-model="editorForm[field.field]" :disabled="field.readonly" :min="field.min ?? 0" :max="field.max" controls-position="right" style="width: 100%" @change="refreshDerivedFields" />
           <el-switch v-else-if="field.type === 'switch'" v-model="editorForm[field.field]" />
           <el-upload v-else-if="field.type === 'image'" action="#" :auto-upload="false" :show-file-list="false" accept="image/png,image/jpeg,image/webp" :on-change="onBannerFile">
             <div class="image-uploader"><img v-if="editorForm[field.field]" :src="String(editorForm[field.field])" alt="Banner 预览"><div v-else><AppIcon name="image-plus" :size="28" /><strong>选择 Banner 图片</strong><small>PNG/JPG/WebP，最大 2 MB，自动裁切为 3:1</small></div></div>
           </el-upload>
           <el-upload v-else-if="field.type === 'firmware'" action="#" :auto-upload="false" :limit="1" accept=".bin,.zip,.img" :on-change="onFirmwareFile"><el-button><AppIcon name="file-up" :size="16" />选择固件文件</el-button><template #tip><div class="el-upload__tip">{{ editorForm[field.field] || '支持 .bin、.zip、.img，最大 50 MB；静态版不保存文件二进制。' }}</div></template></el-upload>
+          <el-upload v-else-if="field.type === 'pdf'" action="#" :auto-upload="false" :limit="1" accept="application/pdf,.pdf" :on-change="onPdfFile"><el-button><AppIcon name="file-up" :size="16" />选择 PDF 文件</el-button><template #tip><div class="el-upload__tip">{{ editorForm[field.field] || '仅支持 PDF，最大 4 MB；保存后由 APP 常见问题入口展示。' }}</div></template></el-upload>
         </el-form-item>
       </el-form>
       <template #footer><el-button @click="editorOpen = false">取消</el-button><el-button type="primary" :loading="saving" @click="saveEditor">保存</el-button></template>
     </el-dialog>
 
-    <el-dialog v-model="detailOpen" :title="`${config.title}详情`" width="860px" align-center append-to-body destroy-on-close class="detail-dialog">
+    <el-dialog v-model="detailOpen" :title="`${config.title}详情`" width="860px" align-center append-to-body destroy-on-close class="detail-dialog" @closed="clearDetailRouteState">
       <template v-if="detailRecord">
         <div class="detail-summary">
           <div class="summary-icon"><AppIcon :name="config.icon" :size="28" /></div>
           <div><div class="eyebrow">{{ detailRecord.code }}</div><h2>{{ detailRecord.name }}</h2><p>{{ detailRecord.summary }}</p></div>
-          <span class="status-chip" :data-tone="statusMeta(detailRecord.status).tone"><i></i>{{ statusMeta(detailRecord.status).label }}</span>
+          <div class="detail-summary-actions"><span class="status-chip" :data-tone="statusMeta(detailRecord.status).tone"><i></i>{{ statusMeta(detailRecord.status).label }}</span><el-button v-if="primaryRelated(detailRecord)" type="primary" plain @click="navigateRelated(primaryRelated(detailRecord)!, detailRecord)">{{ primaryRelated(detailRecord)!.label }}</el-button><el-dropdown v-if="secondaryRelated(detailRecord).length" trigger="click" @command="(key: string) => navigateRelatedByKey(detailRecord!, key)"><el-button>关联数据<AppIcon name="chevron-down" :size="14" /></el-button><template #dropdown><el-dropdown-menu class="related-data-menu"><el-dropdown-item v-for="item in secondaryRelated(detailRecord)" :key="item.key" :command="item.key"><AppIcon :name="item.icon" :size="16" /><span>{{ item.label }}</span><small>{{ item.count }}</small></el-dropdown-item></el-dropdown-menu></template></el-dropdown></div>
         </div>
         <el-tabs v-model="detailTab" class="detail-tabs">
           <el-tab-pane v-for="tab in drawerTabs" :key="tab.key" :label="tab.label" :name="tab.key">
-            <DomainDetailPanel v-if="currentDetailTab && currentDetailTab.key === tab.key" :key="`${detailRecord.id}-${tab.key}-${detailRevision}`" :module-key="moduleKey" :record="detailRecord" :tab="currentDetailTab" @action="runRelatedAction" />
+            <DomainDetailPanel v-if="currentDetailTab && currentDetailTab.key === tab.key" :key="`${detailRecord.id}-${tab.key}-${detailRevision}`" :module-key="moduleKey" :record="detailRecord" :tab="currentDetailTab" :navigation="relatedLinks[detailRecord.id] || []" @action="runRelatedAction" @navigate="navigateRelated($event, detailRecord)" />
           </el-tab-pane>
         </el-tabs>
       </template>
@@ -604,25 +1048,36 @@ onBeforeUnmount(() => window.removeEventListener('prototype-open', handlePrototy
       <el-form label-position="top" class="action-form">
         <el-form-item v-if="riskAction === 'permissions'" label="菜单与操作权限" class="permission-action-field"><el-tree ref="permissionTreeRef" show-checkbox default-expand-all node-key="id" :data="permissionTree" /></el-form-item>
         <el-form-item v-for="field in currentAction?.fields" :key="field.field" :label="field.label" :required="field.required">
-          <el-input v-if="field.type === 'text'" v-model="actionForm[field.field]" :placeholder="`请输入${field.label}`" />
+          <el-input v-if="field.type === 'text'" v-model="actionForm[field.field]" :placeholder="`请输入${field.label}`" :disabled="field.readonly" />
           <el-input v-else-if="field.type === 'textarea'" v-model="actionForm[field.field]" type="textarea" :rows="3" :placeholder="`请输入${field.label}`" maxlength="300" show-word-limit />
-          <el-select v-else-if="field.type === 'select'" v-model="actionForm[field.field]" placeholder="请选择" style="width: 100%"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
-          <el-select v-else-if="field.type === 'multiSelect'" v-model="actionForm[field.field]" multiple collapse-tags placeholder="请选择" style="width: 100%"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'select'" v-model="actionForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" placeholder="请选择" style="width: 100%" @change="refreshRiskFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
+          <el-select v-else-if="field.type === 'multiSelect'" v-model="actionForm[field.field]" :disabled="field.readonly" :filterable="Boolean(field.optionSource)" multiple collapse-tags placeholder="请选择" style="width: 100%" @change="refreshRiskFields"><el-option v-for="option in fieldOptions(field)" :key="option.value" :label="option.label" :value="option.value" /></el-select>
           <el-input-number v-else-if="field.type === 'number'" v-model="actionForm[field.field]" :min="field.min || 0" :max="field.max" style="width: 100%" />
+          <el-date-picker v-else-if="field.type === 'date'" v-model="actionForm[field.field]" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
           <el-switch v-else-if="field.type === 'switch'" v-model="actionForm[field.field]" />
         </el-form-item>
       </el-form>
       <template #footer><el-button @click="riskOpen = false">取消</el-button><el-button :type="currentAction?.tone === 'danger' ? 'danger' : 'primary'" :loading="saving" @click="confirmRisk">确认{{ riskActionLabel }}</el-button></template>
     </el-dialog>
 
-    <el-dialog v-model="importOpen" :title="moduleKey === 'warehouse' ? '批量设备入库' : '批量导入设备'" width="860px" align-center append-to-body class="import-dialog">
-      <div class="import-steps"><span class="active">1 选择文件</span><i></i><span :class="{ active: importRows.length }">2 校验数据</span><i></i><span>3 完成导入</span></div>
-      <div class="drop-zone" :class="{ ready: importRows.length }">
-        <AppIcon name="file-spreadsheet" :size="32" /><strong>{{ importName || '选择 Excel 或 CSV 文件' }}</strong><p>需要包含 SN、设备型号、销售地区三列；SN 必须全局唯一。</p>
-        <label class="el-button el-button--primary"><input type="file" accept=".xlsx,.csv" hidden @change="onImportFile">选择文件</label><el-button link type="primary" @click="downloadDeviceTemplate">下载导入模板</el-button>
+    <el-dialog v-model="importOpen" :title="isMaterialImport ? '批量导入物料' : isOutboundImport ? '表格批量出库' : moduleKey === 'warehouse' ? '批量设备入库' : '批量导入设备'" width="860px" align-center append-to-body class="import-dialog" @closed="resetImportDialog">
+      <div class="import-steps"><span class="active">1 选择文件</span><i></i><span :class="{ active: activeImportRows.length }">2 校验数据</span><i></i><span>3 {{ isOutboundImport ? '创建出库单' : '完成导入' }}</span></div>
+      <div v-if="isOutboundImport" class="impact-callout info outbound-import-tip"><AppIcon name="info" :size="20" /><div><strong>出库流程说明</strong><p>表格用于批量创建待确认出库单。确认出库后，系统才会更新设备库存、经销商归属和归属历史。</p></div></div>
+      <div class="drop-zone" :class="{ ready: activeImportRows.length }">
+        <AppIcon name="file-spreadsheet" :size="32" /><strong>{{ importName || '选择 Excel 或 CSV 文件' }}</strong><p>{{ isMaterialImport ? '需要包含物料编号、名称、产品分类、适用设备和采购价五列；库存通过仓库流水形成。' : isOutboundImport ? '需要包含 SN 一列；设备必须处于平台仓库在库状态，文件内不可重复。' : '需要包含 SN、设备型号、销售地区三列；可增加仓库/机构、库位及成对填写的子物料序列号和规格。' }}</p>
+        <label class="el-button el-button--primary"><input type="file" accept=".xlsx,.csv" hidden @change="onImportFile">选择文件</label><el-button link type="primary" @click="isMaterialImport ? downloadMaterialTemplate() : isOutboundImport ? downloadOutboundTemplate() : downloadDeviceTemplate()">下载{{ isMaterialImport ? '物料导入' : isOutboundImport ? '出库' : '导入' }}模板</el-button>
       </div>
-      <div v-if="importRows.length" class="import-result"><div class="result-summary"><span>共 {{ importRows.length }} 行</span><b class="success-text">{{ validImportCount }} 行可导入</b><b v-if="importRows.length - validImportCount" class="error-text">{{ importRows.length - validImportCount }} 行需修正</b></div><el-table :data="importRows" max-height="280"><el-table-column prop="row" label="行号" width="70" /><el-table-column prop="sn" label="SN" min-width="160" /><el-table-column prop="model" label="设备型号" min-width="160" /><el-table-column prop="region" label="销售地区" width="120" /><el-table-column label="校验结果" min-width="190"><template #default="scope"><span :class="scope.row.valid ? 'success-text' : 'error-text'">{{ scope.row.valid ? '通过' : scope.row.error }}</span></template></el-table-column></el-table></div>
-      <template #footer><el-button @click="importOpen = false">取消</el-button><el-button type="primary" :loading="importBusy" :disabled="!validImportCount" @click="confirmImport">{{ moduleKey === 'warehouse' ? '入库' : '导入' }} {{ validImportCount }} 台设备</el-button></template>
+      <div v-if="activeImportRows.length" class="import-result">
+        <div class="result-summary"><span>共 {{ activeImportRows.length }} 行</span><b class="success-text">{{ validImportCount }} 行校验通过</b><b v-if="invalidImportCount" class="error-text">{{ invalidImportCount }} 行需修正</b></div>
+        <el-table v-if="isOutboundImport" :data="outboundRows" max-height="280"><el-table-column prop="row" label="行号" width="70" /><el-table-column prop="sn" label="SN" min-width="170" /><el-table-column prop="model" label="设备型号" min-width="160" /><el-table-column prop="warehouseLocation" label="当前库位" width="120" /><el-table-column label="校验结果" min-width="210"><template #default="scope"><span :class="scope.row.valid ? 'success-text' : 'error-text'">{{ scope.row.valid ? '通过' : scope.row.error }}</span></template></el-table-column></el-table>
+        <el-table v-else-if="isMaterialImport" :data="materialImportRows" max-height="280"><el-table-column prop="row" label="行号" width="70" /><el-table-column prop="materialCode" label="物料编号" width="140" /><el-table-column prop="name" label="物料名称" min-width="150" /><el-table-column prop="productCategory" label="产品分类" min-width="170" /><el-table-column prop="category" label="适用设备" min-width="150" /><el-table-column label="校验结果" min-width="190"><template #default="scope"><span :class="scope.row.valid ? 'success-text' : 'error-text'">{{ scope.row.valid ? '通过' : scope.row.error }}</span></template></el-table-column></el-table>
+        <el-table v-else :data="importRows" max-height="280"><el-table-column prop="row" label="行号" width="70" /><el-table-column prop="sn" label="SN" min-width="160" /><el-table-column prop="deviceType" label="设备类型" min-width="150" /><el-table-column prop="model" label="设备型号" min-width="150" /><el-table-column prop="specification" label="产品规格" min-width="160" /><el-table-column label="子物料" width="90"><template #default="scope">{{ scope.row.components.length }} 项</template></el-table-column><el-table-column prop="warehouseName" label="仓库" width="140" /><el-table-column prop="warehouseLocation" label="库位" width="100" /><el-table-column label="校验结果" min-width="190"><template #default="scope"><span :class="scope.row.valid ? 'success-text' : 'error-text'">{{ scope.row.valid ? '通过' : scope.row.error }}</span></template></el-table-column></el-table>
+      </div>
+      <el-form v-if="isOutboundImport && activeImportRows.length" label-position="top" class="outbound-upload-form">
+        <el-form-item label="接收经销商" required><el-select v-model="outboundForm.targetDealerId" filterable placeholder="请选择正常状态的接收经销商" style="width: 100%"><el-option v-for="option in dynamicOptions.dealers || []" :key="option.value" :label="option.label" :value="option.value" /></el-select></el-form-item>
+        <el-form-item label="出库说明"><el-input v-model="outboundForm.summary" type="textarea" :rows="3" maxlength="300" show-word-limit placeholder="请输入本次批量出库说明" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="importOpen = false">取消</el-button><el-button type="primary" :loading="importBusy" :disabled="!canConfirmImport" @click="confirmImport">{{ isMaterialImport ? `导入 ${validImportCount} 条物料` : isOutboundImport ? `创建出库单（${validImportCount} 台）` : `${moduleKey === 'warehouse' ? '入库' : '导入'} ${validImportCount} 台设备` }}</el-button></template>
     </el-dialog>
 
     <el-dialog v-model="prototypeOpen" :title="prototypeTitle" width="700px" align-center append-to-body class="entity-dialog prototype-dialog">
