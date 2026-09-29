@@ -9,7 +9,6 @@ screenshots/generated/
 screenshots/ui-check/
 .review/
 artifacts/
-package-lock.json
 *.log
 *.err.log
 *.out.log
