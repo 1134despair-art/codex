@@ -1,0 +1,129 @@
+{
+  "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js": {
+    "file": "assets/AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+    "name": "AppIcon.vue_vue_type_script_setup_true_lang",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_excel-n7M8IzyR.js": {
+    "file": "assets/excel-n7M8IzyR.js",
+    "name": "excel",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_mock-BpLJDPFC.js": {
+    "file": "assets/mock-BpLJDPFC.js",
+    "name": "mock",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "_preferences-Du_IrcuX.js": {
+    "file": "assets/preferences-Du_IrcuX.js",
+    "name": "preferences",
+    "imports": [
+      "index.html"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index-CocgBRNT.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/views/AuthView.vue",
+      "src/components/AppShell.vue",
+      "src/views/DashboardView.vue",
+      "src/views/ModuleView.vue",
+      "src/views/ConfigView.vue",
+      "src/views/LaunchConfigView.vue",
+      "src/views/NotFoundView.vue"
+    ],
+    "css": [
+      "assets/index-DjWx36IC.css"
+    ]
+  },
+  "src/components/AppShell.vue": {
+    "file": "assets/AppShell-DpQDugh0.js",
+    "name": "AppShell",
+    "src": "src/components/AppShell.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+      "_mock-BpLJDPFC.js",
+      "_preferences-Du_IrcuX.js"
+    ]
+  },
+  "src/views/AuthView.vue": {
+    "file": "assets/AuthView-CnX9xdhh.js",
+    "name": "AuthView",
+    "src": "src/views/AuthView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js"
+    ]
+  },
+  "src/views/ConfigView.vue": {
+    "file": "assets/ConfigView-BEjKGHSU.js",
+    "name": "ConfigView",
+    "src": "src/views/ConfigView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+      "_excel-n7M8IzyR.js",
+      "_mock-BpLJDPFC.js"
+    ]
+  },
+  "src/views/DashboardView.vue": {
+    "file": "assets/DashboardView-C7sepwXk.js",
+    "name": "DashboardView",
+    "src": "src/views/DashboardView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+      "index.html",
+      "_mock-BpLJDPFC.js"
+    ]
+  },
+  "src/views/LaunchConfigView.vue": {
+    "file": "assets/LaunchConfigView-DTscL1yL.js",
+    "name": "LaunchConfigView",
+    "src": "src/views/LaunchConfigView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js"
+    ],
+    "css": [
+      "assets/LaunchConfigView-cuvcD5dU.css"
+    ]
+  },
+  "src/views/ModuleView.vue": {
+    "file": "assets/ModuleView-mEt9cT78.js",
+    "name": "ModuleView",
+    "src": "src/views/ModuleView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html",
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+      "_mock-BpLJDPFC.js",
+      "_excel-n7M8IzyR.js",
+      "_preferences-Du_IrcuX.js"
+    ]
+  },
+  "src/views/NotFoundView.vue": {
+    "file": "assets/NotFoundView-C5ynRkg3.js",
+    "name": "NotFoundView",
+    "src": "src/views/NotFoundView.vue",
+    "isDynamicEntry": true,
+    "imports": [
+      "_AppIcon.vue_vue_type_script_setup_true_lang-F5nriqqq.js",
+      "index.html"
+    ]
+  }
+}
