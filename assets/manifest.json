@@ -1,0 +1,597 @@
+{
+  "generatedAt": "2026-08-10T04:39:38.121Z",
+  "designSystem": "../../design-system/design-tokens.css",
+  "iconSource": "Lucide icon nodes used by ui-prototype/app.js",
+  "icons": [
+    {
+      "name": "arrow-left-right",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/arrow-left-right.png",
+      "alpha": true
+    },
+    {
+      "name": "arrow-right",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/arrow-right.png",
+      "alpha": true
+    },
+    {
+      "name": "arrow-up-right",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/arrow-up-right.png",
+      "alpha": true
+    },
+    {
+      "name": "battery-charging",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/battery-charging.png",
+      "alpha": true
+    },
+    {
+      "name": "bell",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/bell.png",
+      "alpha": true
+    },
+    {
+      "name": "boxes",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/boxes.png",
+      "alpha": true
+    },
+    {
+      "name": "building-2",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/building-2.png",
+      "alpha": true
+    },
+    {
+      "name": "chart-no-axes-combined",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/chart-no-axes-combined.png",
+      "alpha": true
+    },
+    {
+      "name": "chevron-down",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/chevron-down.png",
+      "alpha": true
+    },
+    {
+      "name": "chevron-left",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/chevron-left.png",
+      "alpha": true
+    },
+    {
+      "name": "chevron-right",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/chevron-right.png",
+      "alpha": true
+    },
+    {
+      "name": "circle-check-big",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/circle-check-big.png",
+      "alpha": true
+    },
+    {
+      "name": "circle-x",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/circle-x.png",
+      "alpha": true
+    },
+    {
+      "name": "compass",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/compass.png",
+      "alpha": true
+    },
+    {
+      "name": "contact",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/contact.png",
+      "alpha": true
+    },
+    {
+      "name": "cpu",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/cpu.png",
+      "alpha": true
+    },
+    {
+      "name": "download",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/download.png",
+      "alpha": true
+    },
+    {
+      "name": "file-spreadsheet",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/file-spreadsheet.png",
+      "alpha": true
+    },
+    {
+      "name": "image-up",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/image-up.png",
+      "alpha": true
+    },
+    {
+      "name": "info",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/info.png",
+      "alpha": true
+    },
+    {
+      "name": "key-round",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/key-round.png",
+      "alpha": true
+    },
+    {
+      "name": "layout-dashboard",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/layout-dashboard.png",
+      "alpha": true
+    },
+    {
+      "name": "list-checks",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/list-checks.png",
+      "alpha": true
+    },
+    {
+      "name": "loader-circle",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/loader-circle.png",
+      "alpha": true
+    },
+    {
+      "name": "lock-keyhole",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/lock-keyhole.png",
+      "alpha": true
+    },
+    {
+      "name": "log-out",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/log-out.png",
+      "alpha": true
+    },
+    {
+      "name": "mail",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/mail.png",
+      "alpha": true
+    },
+    {
+      "name": "map-pin",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/map-pin.png",
+      "alpha": true
+    },
+    {
+      "name": "menu",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/menu.png",
+      "alpha": true
+    },
+    {
+      "name": "message-square-warning",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/message-square-warning.png",
+      "alpha": true
+    },
+    {
+      "name": "messages-square",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/messages-square.png",
+      "alpha": true
+    },
+    {
+      "name": "more-horizontal",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/more-horizontal.png",
+      "alpha": true
+    },
+    {
+      "name": "network",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/network.png",
+      "alpha": true
+    },
+    {
+      "name": "package-check",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/package-check.png",
+      "alpha": true
+    },
+    {
+      "name": "package-open",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/package-open.png",
+      "alpha": true
+    },
+    {
+      "name": "package-plus",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/package-plus.png",
+      "alpha": true
+    },
+    {
+      "name": "package-up",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/package-up.png",
+      "alpha": true
+    },
+    {
+      "name": "panels-top-left",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/panels-top-left.png",
+      "alpha": true
+    },
+    {
+      "name": "phone",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/phone.png",
+      "alpha": true
+    },
+    {
+      "name": "plus",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/plus.png",
+      "alpha": true
+    },
+    {
+      "name": "receipt-text",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/receipt-text.png",
+      "alpha": true
+    },
+    {
+      "name": "refresh-cw",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/refresh-cw.png",
+      "alpha": true
+    },
+    {
+      "name": "rows-3",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/rows-3.png",
+      "alpha": true
+    },
+    {
+      "name": "save",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/save.png",
+      "alpha": true
+    },
+    {
+      "name": "scan-line",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/scan-line.png",
+      "alpha": true
+    },
+    {
+      "name": "scroll-text",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/scroll-text.png",
+      "alpha": true
+    },
+    {
+      "name": "search",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/search.png",
+      "alpha": true
+    },
+    {
+      "name": "send",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/send.png",
+      "alpha": true
+    },
+    {
+      "name": "settings",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/settings.png",
+      "alpha": true
+    },
+    {
+      "name": "settings-2",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/settings-2.png",
+      "alpha": true
+    },
+    {
+      "name": "shield-check",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/shield-check.png",
+      "alpha": true
+    },
+    {
+      "name": "shield-user",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/shield-user.png",
+      "alpha": true
+    },
+    {
+      "name": "ship-wheel",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/ship-wheel.png",
+      "alpha": true
+    },
+    {
+      "name": "store",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/store.png",
+      "alpha": true
+    },
+    {
+      "name": "trash-2",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/trash-2.png",
+      "alpha": true
+    },
+    {
+      "name": "triangle-alert",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/triangle-alert.png",
+      "alpha": true
+    },
+    {
+      "name": "truck",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/truck.png",
+      "alpha": true
+    },
+    {
+      "name": "upload",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/upload.png",
+      "alpha": true
+    },
+    {
+      "name": "user-cog",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/user-cog.png",
+      "alpha": true
+    },
+    {
+      "name": "user-round",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/user-round.png",
+      "alpha": true
+    },
+    {
+      "name": "users",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/users.png",
+      "alpha": true
+    },
+    {
+      "name": "wallet-cards",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/wallet-cards.png",
+      "alpha": true
+    },
+    {
+      "name": "warehouse",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/warehouse.png",
+      "alpha": true
+    },
+    {
+      "name": "waves",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/waves.png",
+      "alpha": true
+    },
+    {
+      "name": "workflow",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/workflow.png",
+      "alpha": true
+    },
+    {
+      "name": "wrench",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/wrench.png",
+      "alpha": true
+    },
+    {
+      "name": "x",
+      "variant": "line",
+      "size": "64x64",
+      "file": "icons/line/x.png",
+      "alpha": true
+    },
+    {
+      "name": "layout-dashboard",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/layout-dashboard.png",
+      "alpha": true
+    },
+    {
+      "name": "users",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/users.png",
+      "alpha": true
+    },
+    {
+      "name": "store",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/store.png",
+      "alpha": true
+    },
+    {
+      "name": "ship-wheel",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/ship-wheel.png",
+      "alpha": true
+    },
+    {
+      "name": "cpu",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/cpu.png",
+      "alpha": true
+    },
+    {
+      "name": "warehouse",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/warehouse.png",
+      "alpha": true
+    },
+    {
+      "name": "package-up",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/package-up.png",
+      "alpha": true
+    },
+    {
+      "name": "wrench",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/wrench.png",
+      "alpha": true
+    },
+    {
+      "name": "messages-square",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/messages-square.png",
+      "alpha": true
+    },
+    {
+      "name": "package-check",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/package-check.png",
+      "alpha": true
+    },
+    {
+      "name": "receipt-text",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/receipt-text.png",
+      "alpha": true
+    },
+    {
+      "name": "shield-user",
+      "variant": "feature",
+      "size": "96x96",
+      "file": "icons/feature/shield-user.png",
+      "alpha": true
+    }
+  ],
+  "images": [
+    {
+      "name": "auth-marine-operations",
+      "size": "1536x1024",
+      "usage": "认证页背景",
+      "file": "backgrounds/auth-marine-operations.png",
+      "alpha": false
+    },
+    {
+      "name": "banner-maintenance",
+      "size": "1920x640",
+      "usage": "设备保养 Banner",
+      "file": "backgrounds/banner-maintenance.png",
+      "alpha": false
+    },
+    {
+      "name": "banner-watermaker",
+      "size": "1920x640",
+      "usage": "海水淡化器 Banner",
+      "file": "backgrounds/banner-watermaker.png",
+      "alpha": false
+    },
+    {
+      "name": "banner-service-network",
+      "size": "1920x640",
+      "usage": "服务网络 Banner",
+      "file": "backgrounds/banner-service-network.png",
+      "alpha": false
+    },
+    {
+      "name": "empty-no-results",
+      "size": "640x640",
+      "usage": "列表空状态/无搜索结果",
+      "file": "illustrations/empty-no-results.png",
+      "alpha": true
+    }
+  ]
+}
